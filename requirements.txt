@@ -1,0 +1,48 @@
+# EA FC 26 Trading Bot Dependencies
+
+# Web scraping and HTTP requests
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Auto-scheduling
+schedule>=1.2.0
+
+# Data analysis and manipulation
+pandas>=2.1.0
+numpy>=1.26.0
+openpyxl>=3.1.0
+
+# Machine learning and predictions
+scikit-learn>=1.3.0
+tensorflow>=2.15.0
+prophet>=1.1.5
+
+# Database
+sqlalchemy>=2.0.0
+sqlite3-python>=1.0.0
+
+# API and web framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Visualization
+matplotlib>=3.8.0
+plotly>=5.18.0
+
+# Scheduling and automation
+schedule>=1.2.0
+apscheduler>=3.10.0
+
+# Configuration and logging
+python-dotenv>=1.0.0
+pyyaml>=6.0.0
+coloredlogs>=15.0.0
+
+# Discord integration
+discord.py>=2.3.0
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3
+psutil>=5.9.0

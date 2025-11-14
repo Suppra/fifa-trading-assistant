@@ -1,0 +1,189 @@
+╔══════════════════════════════════════════════════════════════╗
+║  🤖 CONFIGURACIÓN DE DISCORD BOT - PASO A PASO             ║
+╚══════════════════════════════════════════════════════════════╝
+
+📋 Tu Application ID: 1438711490541785158
+
+┌──────────────────────────────────────────────────────────────┐
+│ PASO 1: CREAR EL BOT Y OBTENER TOKEN                        │
+└──────────────────────────────────────────────────────────────┘
+
+1. Ve a: https://discord.com/developers/applications/1438711490541785158/bot
+
+2. Click en "Add Bot" (si no lo has hecho)
+   O click en "Reset Token" si ya existe
+
+3. ⚠️  COPIA EL TOKEN INMEDIATAMENTE (solo se muestra una vez)
+   Ejemplo: MTxxxxxxxxxxxxxxxxxx.GxXxXx.xxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ PASO 2: HABILITAR PERMISOS IMPORTANTES                      │
+└──────────────────────────────────────────────────────────────┘
+
+En la misma página de "Bot", busca "Privileged Gateway Intents":
+
+✅ MESSAGE CONTENT INTENT  ← ¡MUY IMPORTANTE!
+✅ SERVER MEMBERS INTENT (opcional)
+
+Click en "Save Changes"
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ PASO 3: INVITAR BOT A TU SERVIDOR                           │
+└──────────────────────────────────────────────────────────────┘
+
+1. Ve a: https://discord.com/developers/applications/1438711490541785158/oauth2/url-generator
+
+2. Selecciona scopes:
+   ✅ bot
+
+3. Selecciona permisos del bot:
+   ✅ View Channels
+   ✅ Send Messages
+   ✅ Embed Links
+   ✅ Attach Files
+   ✅ Read Message History
+
+4. Copia la URL generada al final de la página
+
+5. Pégala en tu navegador
+
+6. Selecciona tu servidor de Discord y autoriza
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ PASO 4: OBTENER ID DEL CANAL                                │
+└──────────────────────────────────────────────────────────────┘
+
+1. Abre Discord
+
+2. Ve a Settings (engranaje abajo) > App Settings > Advanced
+
+3. Activa "Developer Mode"
+
+4. Ve a tu servidor
+
+5. Click DERECHO en el canal donde quieres recibir notificaciones
+
+6. Click en "Copy ID"
+   Ejemplo: 1234567890123456789
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ PASO 5: CONFIGURAR EL BOT EN TU PROYECTO                    │
+└──────────────────────────────────────────────────────────────┘
+
+Una vez tengas:
+• TOKEN del bot (Paso 1)
+• ID del canal (Paso 4)
+
+Ejecuta:
+   python launcher.py
+   
+Selecciona opción 7 (Configurar .env)
+
+O edita manualmente el archivo .env y agrega:
+
+DISCORD_BOT_TOKEN=tu_token_completo_aquí
+DISCORD_CHANNEL_ID=tu_canal_id_aquí
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ VERIFICAR CONFIGURACIÓN                                      │
+└──────────────────────────────────────────────────────────────┘
+
+Ejecuta:
+   python launcher.py
+   Opción 8 (Ver Estado del Sistema)
+
+Deberías ver:
+   💬 Discord:
+      ✅ Configurado
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ INICIAR EL BOT                                               │
+└──────────────────────────────────────────────────────────────┘
+
+Método 1 (Recomendado) - Desde App de Escritorio:
+   python desktop_app.py
+   → Ve a pestaña "Discord"
+   → Click en "Conectar Discord"
+
+Método 2 - Standalone:
+   python discord_bot.py
+
+Método 3 - Desde Launcher:
+   python launcher.py
+   Opción 3 (Iniciar Bot de Discord)
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ PROBAR QUE FUNCIONA                                          │
+└──────────────────────────────────────────────────────────────┘
+
+En tu canal de Discord, escribe:
+   !fc26 ayuda
+
+Deberías recibir una respuesta con todos los comandos disponibles.
+
+También puedes probar:
+   !fc26 status
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ COMANDOS DISPONIBLES                                         │
+└──────────────────────────────────────────────────────────────┘
+
+!fc26 status              → Ver estado del bot y presupuesto
+!fc26 recomendaciones     → Ver mejores compras
+!fc26 vender              → Ver qué vender
+!fc26 presupuesto 50000   → Actualizar presupuesto
+!fc26 ayuda               → Ver todos los comandos
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ NOTIFICACIONES AUTOMÁTICAS                                   │
+└──────────────────────────────────────────────────────────────┘
+
+Una vez configurado, el bot enviará automáticamente:
+
+📅 Recomendaciones diarias a las 9:00 AM
+🔥 Alertas en tiempo real de oportunidades
+⚠️  Avisos cuando tus cartas pierden valor
+✅ Notificaciones de buen momento para vender
+
+
+┌──────────────────────────────────────────────────────────────┐
+│ SOLUCIÓN DE PROBLEMAS                                        │
+└──────────────────────────────────────────────────────────────┘
+
+❌ "Bot no responde"
+   → Verifica MESSAGE CONTENT INTENT esté habilitado
+   → Verifica el bot esté en tu servidor (lista de miembros)
+
+❌ "Invalid Token"
+   → Regenera el token en Discord Developer Portal
+   → Copia el NUEVO token a .env
+
+❌ "Cannot send messages"
+   → Verifica permisos del bot en el canal
+   → Bot necesita "Send Messages" y "Embed Links"
+
+❌ "Channel not found"
+   → Verifica DISCORD_CHANNEL_ID sea correcto
+   → El ID debe ser solo números (sin # ni nombre)
+
+
+═══════════════════════════════════════════════════════════════
+
+¿Necesitas ayuda con algún paso específico?
+
+1. Obtener el token → Revisa Paso 1
+2. Invitar bot → Revisa Paso 3
+3. Obtener ID del canal → Revisa Paso 4
+4. Configurar .env → Revisa Paso 5
+5. Iniciar el bot → Revisa "Iniciar el Bot"
+
+═══════════════════════════════════════════════════════════════
