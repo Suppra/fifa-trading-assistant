@@ -1,15 +1,15 @@
 """
 Launch script for EA FC 26 Trading Bot Desktop Application
-Windows native app with Tkinter
+Windows native app with Tkinter - MVC Architecture
 """
 
 import sys
 import os
 
-# Add src to path
+# Add project root to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from src.desktop_app.main_window import TradingBotApp
+from app.views.desktop_ui import TradingBotApp
 import logging
 
 # Setup logging

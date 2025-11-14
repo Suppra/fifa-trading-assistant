@@ -8,10 +8,10 @@ import os
 import asyncio
 from dotenv import load_dotenv
 
-# Add src to path
+# Add project root to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from src.discord_bot.discord_notifier import DiscordNotifier
+from app.services.discord_service import DiscordNotifier
 import logging
 
 # Setup logging

@@ -1,6 +1,7 @@
 """
-Advanced start script for EA FC 26 Trading Bot
-Includes all new features: Desktop App, Discord, Dynamic Budget
+Advanced launcher for EA FC 26 Trading Bot
+Includes all features: Desktop App, Discord, Budget Management
+MVC Architecture
 """
 
 import os
