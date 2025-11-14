@@ -169,23 +169,6 @@ class FUTBINScraper:
             logger.error(f"❌ Error obteniendo precio PC para player_id={player_id}: {e}")
             return 0
     
-    def get_player_price(self, player_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get real-time price for a specific player from FUTBIN
-        
-        NOTE: This requires knowing the player's URL slug. 
-        For searching by name, use search_player_by_name() instead.
-        
-        Args:
-            player_id: FUTBIN player ID
-            
-        Returns:
-            Dictionary with player price data
-        """
-        # This method is deprecated - use search_player_by_name instead
-        logger.warning("get_player_price requires URL slug. Use search_player_by_name() instead.")
-        return None
-    
     def get_all_players_from_page(self, page: int = 1, max_players: int = 100) -> List[Dict[str, Any]]:
         """
         Obtiene jugadores directamente de la página de FUTBIN
@@ -680,6 +663,162 @@ class FUTBINScraper:
                 return int(price_str)
         except:
             return 0
+    
+    def get_all_players_parallel(self, max_pages: int = 50, num_threads: int = 5, 
+                                  progress_callback=None) -> List[Dict[str, Any]]:
+        """
+        Descarga jugadores de múltiples páginas en PARALELO
+        
+        Args:
+            max_pages: Total de páginas a descargar
+            num_threads: Número de hilos concurrentes (default: 5)
+            progress_callback: Función callback(page, total_pages, player_name)
+            
+        Returns:
+            Lista de jugadores con URLs
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+        
+        logger.info(f"\n{'='*70}")
+        logger.info(f"⚡ DESCARGA PARALELA: {max_pages} páginas con {num_threads} hilos")
+        logger.info(f"{'='*70}\n")
+        
+        all_players = []
+        lock = threading.Lock()
+        pages_completed = [0]  # Mutable counter
+        
+        def download_page(page_num):
+            """Descarga una página individual"""
+            try:
+                players = self.get_all_players_from_page(page_num)
+                
+                with lock:
+                    if players:
+                        all_players.extend(players)
+                        pages_completed[0] += 1
+                        
+                        if progress_callback and players:
+                            # Reportar primer jugador de la página
+                            progress_callback(pages_completed[0], max_pages, players[0]['name'])
+                        
+                        logger.info(f"✅ Página {page_num}: {len(players)} jugadores")
+                    else:
+                        logger.warning(f"⚠️ Página {page_num}: Sin jugadores")
+                
+                time.sleep(1)  # Rate limiting (aumentado para evitar 403)
+                return True
+                
+            except Exception as e:
+                logger.error(f"❌ Error página {page_num}: {e}")
+                return False
+        
+        # Ejecutar descargas en paralelo
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = {executor.submit(download_page, page): page 
+                      for page in range(1, max_pages + 1)}
+            
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"Error en thread: {e}")
+        
+        logger.info(f"\n{'='*70}")
+        logger.info(f"✅ DESCARGA COMPLETA: {len(all_players)} jugadores obtenidos")
+        logger.info(f"{'='*70}\n")
+        
+        return all_players
+    
+    def update_existing_players_incremental(self, db_manager, progress_callback=None) -> int:
+        """
+        Actualiza SOLO jugadores que ya existen en la base de datos
+        Mucho más rápido que descarga completa
+        
+        Args:
+            db_manager: Instancia de DatabaseManager
+            progress_callback: Función callback(current, total, player_name)
+            
+        Returns:
+            Número de precios actualizados
+        """
+        logger.info(f"\n{'='*70}")
+        logger.info(f"🔄 ACTUALIZACIÓN INCREMENTAL - Solo jugadores existentes")
+        logger.info(f"{'='*70}\n")
+        
+        # Obtener todos los jugadores de la DB
+        session = db_manager.get_session()
+        existing_players = session.query(db_manager.Player).filter_by(is_extinct=False).all()
+        session.close()
+        
+        total = len(existing_players)
+        logger.info(f"📊 {total} jugadores en base de datos")
+        
+        if total == 0:
+            logger.warning("⚠️ No hay jugadores en DB. Usar descarga inicial.")
+            return 0
+        
+        updated = 0
+        failed = 0
+        
+        for i, player in enumerate(existing_players, 1):
+            try:
+                if progress_callback:
+                    progress_callback(i, total, player.name)
+                
+                # Construir URL del jugador
+                player_url = f"{self.base_url}/26/player/{player.player_id}"
+                
+                response = self.session.get(player_url, timeout=10)
+                
+                if response.status_code != 200:
+                    failed += 1
+                    continue
+                
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Extraer precio PC
+                price_text = soup.get_text()
+                match = re.search(r'([\d,]+)\s+on\s+PC', price_text, re.IGNORECASE)
+                
+                if match:
+                    price_str = match.group(1).replace(',', '')
+                    pc_price = int(price_str)
+                    
+                    # Actualizar precio en DB
+                    db_manager.add_price_history(
+                        player_id=player.player_id,
+                        price=pc_price
+                    )
+                    
+                    updated += 1
+                    logger.info(f"[{i}/{total}] ✅ {player.name}: {pc_price:,} coins")
+                else:
+                    # Marcar como extinto
+                    session = db_manager.get_session()
+                    db_player = session.query(db_manager.Player).filter_by(
+                        player_id=player.player_id
+                    ).first()
+                    if db_player:
+                        db_player.is_extinct = True
+                        session.commit()
+                    session.close()
+                    
+                    failed += 1
+                    logger.warning(f"[{i}/{total}] 🔴 {player.name}: EXTINTO")
+                
+                time.sleep(1)  # Rate limiting
+                
+            except Exception as e:
+                logger.error(f"❌ Error {player.name}: {e}")
+                failed += 1
+                continue
+        
+        logger.info(f"\n{'='*70}")
+        logger.info(f"✅ INCREMENTAL COMPLETO: {updated} actualizados, {failed} fallidos")
+        logger.info(f"{'='*70}\n")
+        
+        return updated
     
     def _get_cached_price(self, player_name: str) -> Optional[Dict[str, Any]]:
         """

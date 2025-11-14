@@ -117,7 +117,7 @@ class PriceAlertManager:
         session = self.db.SessionLocal()
         
         try:
-            from app.database.db_manager import Player, PriceHistory
+            from app.models.database import Player, PriceHistory
             
             for player_id, alert_data in list(self.alerts["monitored_players"].items()):
                 # Get latest price

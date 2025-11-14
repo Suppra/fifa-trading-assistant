@@ -29,7 +29,7 @@ class TradingBotApp:
     def __init__(self):
         """Initialize desktop application"""
         self.root = tk.Tk()
-        self.root.title("⚽ EA FC 26 Trading Bot Pro")
+        self.root.title("⚽ EA FC 26 Trading Bot Pro • by xSuppra")
         self.root.geometry("1920x1080")
         # Maximizar ventana para 1080p
         try:
@@ -46,6 +46,7 @@ class TradingBotApp:
             'accent_green': '#00C805',      # Success/Profit green
             'accent_red': '#FF3B30',        # Loss/Danger red
             'accent_blue': '#0A84FF',       # Info blue
+            'accent_cyan': '#00D4FF',       # Cyan blue
             'accent_gold': '#FFD60A',       # Premium gold
             'accent_purple': '#BF5AF2',     # Highlight purple
             'text_white': '#FFFFFF',        # Primary text
@@ -65,6 +66,7 @@ class TradingBotApp:
             'accent_green': '#00C805',
             'accent_red': '#FF3B30',
             'accent_blue': '#0A84FF',
+            'accent_cyan': '#00D4FF',
             'accent_gold': '#FFD60A',
             'accent_purple': '#BF5AF2',
             'text_white': '#000000',
@@ -149,27 +151,24 @@ class TradingBotApp:
             self.db_cache = None
             self.sbc_tracker = None
         
-        # Initialize Fodder Flipping Assistant
+        # Initialize Database Manager
         try:
-            from fodder_assistant import FodderFlippingAssistant
-            from realtime_price_updater import RealtimePriceUpdater
-            from app.database.db_manager import DatabaseManager
+            from app.models.database import DatabaseManager
             
             self.db_manager = DatabaseManager()
-            self.fodder_assistant = FodderFlippingAssistant(user_budget=11000)
-            self.price_updater = RealtimePriceUpdater()
-            self.price_updater.start()  # Start background price updates
             
             # Initialize alert manager with DB
             if self.alert_manager:
                 self.alert_manager.db = self.db_manager
             
-            logger.info("✅ Fodder Assistant y Price Updater iniciados")
+            logger.info("✅ Database Manager iniciado")
         except Exception as e:
-            logger.error(f"Error iniciando asistentes: {e}")
-            self.fodder_assistant = None
-            self.price_updater = None
+            logger.error(f"Error iniciando DB Manager: {e}")
             self.db_manager = None
+        
+        # Fodder Assistant y Price Updater (opcional - no implementado aún)
+        self.fodder_assistant = None
+        self.price_updater = None
         
         # Filters state
         self.filters = {
@@ -563,18 +562,24 @@ class TradingBotApp:
         self.league_filter.pack(side=tk.LEFT, padx=(0, 15))
         self.league_filter.bind("<<ComboboxSelected>>", lambda e: self._apply_filters())
         
-        # Position filter
-        tk.Label(filter_frame, text="Posición:", font=self.fonts['small'],
-                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(side=tk.LEFT, padx=(0, 5))
+        # Position filter (DISABLED - positions not scraped correctly yet)
+        # tk.Label(filter_frame, text="Posición:", font=self.fonts['small'],
+        #         bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(side=tk.LEFT, padx=(0, 5))
         
-        self.position_filter = ttk.Combobox(filter_frame,
-                                           values=["Todas", "GK", "DEF", "MID", "ATT"],
-                                           state="readonly",
-                                           width=10,
-                                           font=self.fonts['small'])
-        self.position_filter.set("Todas")
-        self.position_filter.pack(side=tk.LEFT, padx=(0, 15))
-        self.position_filter.bind("<<ComboboxSelected>>", lambda e: self._apply_filters())
+        # self.position_filter = ttk.Combobox(filter_frame,
+        #                                    values=["Todas", "GK", "DEF", "MID", "ATT"],
+        #                                    state="readonly",
+        #                                    width=10,
+        #                                    font=self.fonts['small'])
+        # self.position_filter.set("Todas")
+        # self.position_filter.pack(side=tk.LEFT, padx=(0, 15))
+        # self.position_filter.bind("<<ComboboxSelected>>", lambda e: self._apply_filters())
+        
+        # Temporary: Set position to Todas always
+        class MockFilter:
+            def get(self): return 'Todas'
+            def set(self, val): pass
+        self.position_filter = MockFilter()
         
         # Rating range
         tk.Label(filter_frame, text="Rating:", font=self.fonts['small'],
@@ -1104,7 +1109,7 @@ Estrategia recomendada:
             widget.destroy()
         
         try:
-            from app.database.db_manager import DatabaseManager, Player, PriceHistory
+            from app.models.database import DatabaseManager, Player, PriceHistory
             from sqlalchemy import func
             from datetime import datetime, timedelta
             
@@ -1691,6 +1696,46 @@ Esto garantiza que NUNCA pierdas una actualización de precios."""
                 bg=self.colors['bg_input'], fg=self.colors['text_light'],
                 justify=tk.LEFT).pack(padx=15, pady=10, anchor=tk.W)
         
+        # Database update card (NUEVO)
+        update_card = tk.Frame(parent, bg=self.colors['bg_medium'])
+        update_card.pack(fill=tk.X, padx=40, pady=(0, 20))
+        
+        tk.Label(update_card, text="🔄 Actualización de Base de Datos", font=self.fonts['subheader'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_white']).pack(anchor=tk.W, padx=20, pady=(20, 10))
+        
+        update_btn_frame = tk.Frame(update_card, bg=self.colors['bg_medium'])
+        update_btn_frame.pack(fill=tk.X, padx=20, pady=(0, 15))
+        
+        tk.Button(update_btn_frame, text="🔄 Actualización Completa (100 páginas)",
+                 command=self._run_full_database_update,
+                 bg=self.colors['accent_cyan'], fg='white',
+                 font=self.fonts['body'],
+                 relief=tk.FLAT, borderwidth=0,
+                 cursor='hand2',
+                 padx=20, pady=10).pack(side=tk.LEFT, padx=(0, 10))
+        
+        tk.Button(update_btn_frame, text="⚡ Actualización Rápida (Solo existentes)",
+                 command=self._run_quick_database_update,
+                 bg=self.colors['accent_green'], fg='white',
+                 font=self.fonts['body'],
+                 relief=tk.FLAT, borderwidth=0,
+                 cursor='hand2',
+                 padx=20, pady=10).pack(side=tk.LEFT)
+        
+        update_info = tk.Frame(update_card, bg=self.colors['bg_input'])
+        update_info.pack(fill=tk.X, padx=20, pady=(0, 20))
+        
+        update_desc = """Actualización Manual de Datos:
+• Completa: Descarga ~1500 jugadores desde FUTBIN (50 páginas) - 15 min
+• Rápida: Solo actualiza jugadores ya existentes en tu base de datos - 3-5 min
+
+Recomendado: Actualización Completa 1 vez por semana
+Uso diario: La app actualiza automáticamente al iniciar"""
+        
+        tk.Label(update_info, text=update_desc, font=self.fonts['small'],
+                bg=self.colors['bg_input'], fg=self.colors['text_light'],
+                justify=tk.LEFT).pack(padx=15, pady=10, anchor=tk.W)
+        
         # About section
         about_card = tk.Frame(parent, bg=self.colors['bg_medium'])
         about_card.pack(fill=tk.X, padx=40, pady=(0, 20))
@@ -1703,15 +1748,19 @@ Esto garantiza que NUNCA pierdas una actualización de precios."""
         
         about_text = """EA FC 26 Trading Bot Pro v2.0
 Desarrollado para trading inteligente en EA FC 26
+Created by xSuppra
 
 Características:
-✓ Precios reales de FUTBIN (100 páginas = ~3000 jugadores)
+✓ Precios reales de FUTBIN (~900-1500 jugadores)
 ✓ Estrategias adaptadas a tu presupuesto
-✓ Actualizaciones automáticas 3 veces al día
-✓ Integración con Discord
+✓ Actualizaciones automáticas al inicio
+✓ Predicciones ML con eventos y SBCs
 ✓ Análisis de mercado por horarios
 ✓ Detección de jugadores extintos
-✓ Sistema de recomendaciones con IA"""
+✓ Sistema de recomendaciones inteligente
+✓ Descarga paralela optimizada (sin rate limiting)
+
+© 2025 xSuppra - Todos los derechos reservados"""
         
         tk.Label(about_info, text=about_text, font=self.fonts['small'],
                 bg=self.colors['bg_input'], fg=self.colors['text_light'],
@@ -1894,6 +1943,158 @@ Características:
             self._log(f"❌ Error al cambiar tema: {e}")
             messagebox.showerror("Error", f"No se pudo cambiar el tema: {e}")
     
+    def _run_full_database_update(self):
+        """Ejecuta actualización completa de base de datos (100 páginas)"""
+        from tkinter import messagebox
+        import threading
+        
+        result = messagebox.askyesno(
+            "Actualización Completa",
+            "Esto descargará ~1500 jugadores desde FUTBIN (50 páginas).\n"
+            "Tiempo estimado: 15 minutos\n\n"
+            "¿Deseas continuar?",
+            icon='question'
+        )
+        
+        if not result:
+            return
+        
+        self._log("🔄 Iniciando actualización completa de base de datos...")
+        
+        def run_update():
+            try:
+                from app.services.futbin_service import FUTBINScraper
+                from app.models.database import DatabaseManager
+                from app.utils.update_strategy import UpdateStrategy
+                
+                scraper = FUTBINScraper()
+                db = DatabaseManager()
+                strategy = UpdateStrategy()
+                
+                self._log("📥 Descargando 50 páginas en paralelo (3 hilos)...")
+                
+                # Descarga paralela
+                all_players = scraper.get_all_players_parallel(
+                    max_pages=50,
+                    num_threads=3,
+                    progress_callback=None
+                )
+                
+                self._log(f"💰 Obteniendo precios de {len(all_players)} jugadores...")
+                
+                # Actualizar precios
+                updated = 0
+                for player in all_players:
+                    try:
+                        response = scraper.session.get(player['url'], timeout=15)
+                        if response.status_code == 200:
+                            from bs4 import BeautifulSoup
+                            import re
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                            price_text = soup.get_text()
+                            match = re.search(r'([\d,]+)\s+on\s+PC', price_text, re.IGNORECASE)
+                            
+                            if match:
+                                price_str = match.group(1).replace(',', '')
+                                pc_price = int(price_str)
+                                
+                                # Crear o actualizar jugador
+                                session = db.get_session()
+                                from app.models.database import Player
+                                
+                                existing = session.query(Player).filter_by(
+                                    player_id=player['player_id']
+                                ).first()
+                                
+                                if not existing:
+                                    new_player = Player(
+                                        player_id=player['player_id'],
+                                        name=player['name'],
+                                        rating=player['rating'],
+                                        position='Unknown',
+                                        is_extinct=False
+                                    )
+                                    session.add(new_player)
+                                    session.commit()
+                                    player_db_id = new_player.id
+                                else:
+                                    if existing.is_extinct:
+                                        existing.is_extinct = False
+                                        session.commit()
+                                    player_db_id = existing.id
+                                
+                                session.close()
+                                db.add_price_history(player_db_id, pc_price)
+                                updated += 1
+                                
+                                if updated % 100 == 0:
+                                    self._log(f"✓ {updated} jugadores actualizados...")
+                                
+                    except Exception as e:
+                        continue
+                
+                # Marcar actualización
+                strategy.mark_full_update(updated)
+                
+                self._log(f"✅ Actualización completa: {updated} jugadores actualizados")
+                messagebox.showinfo("Éxito", f"Base de datos actualizada con {updated} jugadores")
+                
+            except Exception as e:
+                self._log(f"❌ Error en actualización: {e}")
+                messagebox.showerror("Error", f"Error durante actualización: {e}")
+        
+        # Ejecutar en thread
+        thread = threading.Thread(target=run_update, daemon=True)
+        thread.start()
+    
+    def _run_quick_database_update(self):
+        """Ejecuta actualización rápida solo de jugadores existentes"""
+        from tkinter import messagebox
+        import threading
+        
+        result = messagebox.askyesno(
+            "Actualización Rápida",
+            "Esto actualizará solo los jugadores que ya están en tu base de datos.\n"
+            "Tiempo estimado: 3-5 minutos\n\n"
+            "¿Deseas continuar?",
+            icon='question'
+        )
+        
+        if not result:
+            return
+        
+        self._log("⚡ Iniciando actualización rápida...")
+        
+        def run_update():
+            try:
+                from app.services.futbin_service import FUTBINScraper
+                from app.models.database import DatabaseManager
+                from app.utils.update_strategy import UpdateStrategy
+                
+                scraper = FUTBINScraper()
+                db = DatabaseManager()
+                strategy = UpdateStrategy()
+                
+                self._log("🔄 Actualizando jugadores existentes...")
+                
+                updated = scraper.update_existing_players_incremental(
+                    db_manager=db,
+                    progress_callback=None
+                )
+                
+                strategy.mark_incremental_update(updated)
+                
+                self._log(f"✅ Actualización rápida: {updated} jugadores actualizados")
+                messagebox.showinfo("Éxito", f"{updated} jugadores actualizados correctamente")
+                
+            except Exception as e:
+                self._log(f"❌ Error en actualización: {e}")
+                messagebox.showerror("Error", f"Error durante actualización: {e}")
+        
+        # Ejecutar en thread
+        thread = threading.Thread(target=run_update, daemon=True)
+        thread.start()
+    
     def _show_discord_config(self):
         """Show Discord configuration (switch to Discord tab)"""
         # This will be implemented to switch tabs
@@ -1933,6 +2134,41 @@ Características:
                 'trend': 'falling'
             }
         ]
+    
+    def _add_to_inventory(self, player_id: str, player_name: str, price: int, quantity: int):
+        """Add purchase to inventory"""
+        try:
+            from app.models.database import Inventory
+            from datetime import datetime
+            
+            if not self.db_manager:
+                self._log("⚠️ Database no disponible")
+                return
+            
+            session = self.db_manager.get_session()
+            
+            # Create inventory entry
+            inventory_item = Inventory(
+                player_id=player_id,
+                player_name=player_name,
+                purchase_price=price,
+                quantity=quantity,
+                status='owned',
+                notes=f"Compra desde recomendaciones - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+            
+            session.add(inventory_item)
+            session.commit()
+            
+            total_cost = price * quantity
+            self._log(f"✅ COMPRA REGISTRADA: {quantity}x {player_name} @ {price:,} coins = {total_cost:,} coins total")
+            self._log(f"💡 Ve a EA FC 26 y compra {quantity} carta(s) de {player_name} al precio aproximado de {price:,} coins")
+            
+            session.close()
+            
+        except Exception as e:
+            logger.error(f"Error adding to inventory: {e}", exc_info=True)
+            self._log(f"❌ Error al registrar compra: {str(e)}")
     
     def _log(self, message: str):
         """Add message to activity log with optimized management"""
@@ -1981,8 +2217,8 @@ Características:
                 from pathlib import Path
                 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
                 
-                from app.data_collection.futbin_scraper import FUTBINScraper
-                from app.database.db_manager import DatabaseManager
+                from app.services.futbin_service import FUTBINScraper
+                from app.models.database import DatabaseManager
                 
                 db = DatabaseManager()
                 scraper = FUTBINScraper()
@@ -2095,216 +2331,349 @@ Características:
         pass
     
     def _refresh_fodder_plan(self):
-        """Refresh Fodder Flipping action plan with filters applied"""
-        if not self.fodder_assistant:
-            logger.warning("Fodder Assistant no disponible")
-            return
-        
+        """Refresh buy recommendations based on real market data"""
         try:
-            # Get complete action plan
-            plan = self.fodder_assistant.get_action_plan()
-            market = plan['market_moment']
+            logger.info("🔄 Actualizando recomendaciones de compra...")
             
             # Clear market moment frame
-            for widget in self.market_moment_frame.winfo_children():
-                widget.destroy()
-            
-            # Display market moment
-            moment_content = tk.Frame(self.market_moment_frame, bg=self.colors['bg_light'])
-            moment_content.pack(fill=tk.X, padx=20, pady=15)
-            
-            # Emoji and action
-            tk.Label(moment_content, text=market['emoji'], font=('Segoe UI Emoji', 32),
-                    bg=self.colors['bg_light']).pack(side=tk.LEFT, padx=(0, 15))
-            
-            action_frame = tk.Frame(moment_content, bg=self.colors['bg_light'])
-            action_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            
-            tk.Label(action_frame, text=market['action'], font=('Segoe UI', 18, 'bold'),
-                    bg=self.colors['bg_light'], fg=self.colors['accent_green'] if 'COMPRAR' in market['action'] 
-                    else self.colors['accent_red'] if 'VENDER' in market['action'] 
-                    else self.colors['text_white']).pack(anchor='w')
-            
-            tk.Label(action_frame, text=market['reason'], font=self.fonts['body'],
-                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='w', pady=(5, 0))
-            
-            # Urgency and confidence
-            stats_frame = tk.Frame(moment_content, bg=self.colors['bg_light'])
-            stats_frame.pack(side=tk.RIGHT)
-            
-            tk.Label(stats_frame, text=f"⚡ {market['urgency']}", font=self.fonts['body'],
-                    bg=self.colors['bg_light'], fg=self.colors['accent_gold']).pack(anchor='e')
-            tk.Label(stats_frame, text=f"📊 Confianza: {market['confidence']}%", font=self.fonts['small'],
-                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='e', pady=(5, 0))
+            if hasattr(self, 'market_moment_frame'):
+                for widget in self.market_moment_frame.winfo_children():
+                    widget.destroy()
+                
+                # Get current market moment based on day/time
+                from datetime import datetime
+                now = datetime.now()
+                hour = now.hour
+                day = now.weekday()  # 0=Monday, 4=Friday
+                
+                # Determine market moment - Weekend League Strategy
+                if day in [0, 1]:  # Monday/Tuesday - BUY phase
+                    emoji = "🛒"
+                    action = "COMPRAR AHORA"
+                    reason = "Lunes/Martes - Precios bajos, poca demanda"
+                    urgency = "ALTA"
+                    confidence = 90
+                elif day == 2:  # Wednesday - HOLD/Monitor
+                    emoji = "📊"
+                    action = "MANTENER Y MONITOREAR"
+                    reason = "Miércoles - Espera la subida del fin de semana"
+                    urgency = "BAJA"
+                    confidence = 70
+                elif day in [3, 4]:  # Thursday/Friday - SELL phase
+                    emoji = "💰"
+                    action = "VENDER AHORA"
+                    reason = "Jueves/Viernes - Weekend League, alta demanda"
+                    urgency = "ALTA"
+                    confidence = 85
+                elif day in [5, 6]:  # Saturday/Sunday - Weekend
+                    emoji = "🎮"
+                    action = "NO COMPRAR"
+                    reason = "Fin de semana - Precios máximos por WL activo"
+                    urgency = "BAJA"
+                    confidence = 80
+                elif hour < 10:
+                    emoji = "🌅"
+                    action = "COMPRAR - PRECIOS BAJOS"
+                    reason = "Madrugada - Menos competencia"
+                    urgency = "MEDIA"
+                    confidence = 70
+                elif hour > 20:
+                    emoji = "🌙"
+                    action = "ESPERAR"
+                    reason = "Noche - Precios elevados"
+                    urgency = "BAJA"
+                    confidence = 60
+                else:
+                    emoji = "📊"
+                    action = "MONITOREAR MERCADO"
+                    reason = "Horario normal - Buscar oportunidades"
+                    urgency = "MEDIA"
+                    confidence = 65
+                
+                # Display market moment
+                moment_content = tk.Frame(self.market_moment_frame, bg=self.colors['bg_light'])
+                moment_content.pack(fill=tk.X, padx=20, pady=15)
+                
+                # Emoji and action
+                tk.Label(moment_content, text=emoji, font=('Segoe UI Emoji', 32),
+                        bg=self.colors['bg_light']).pack(side=tk.LEFT, padx=(0, 15))
+                
+                action_frame = tk.Frame(moment_content, bg=self.colors['bg_light'])
+                action_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                action_color = self.colors['accent_green'] if 'COMPRAR' in action else \
+                              self.colors['accent_gold'] if 'VENDER' in action else \
+                              self.colors['accent_red'] if 'NO COMPRAR' in action else \
+                              self.colors['text_white']
+                
+                tk.Label(action_frame, text=action, font=('Segoe UI', 18, 'bold'),
+                        bg=self.colors['bg_light'], fg=action_color).pack(anchor='w')
+                
+                tk.Label(action_frame, text=reason, font=self.fonts['body'],
+                        bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='w', pady=(5, 0))
+                
+                # Urgency and confidence
+                stats_frame = tk.Frame(moment_content, bg=self.colors['bg_light'])
+                stats_frame.pack(side=tk.RIGHT)
+                
+                tk.Label(stats_frame, text=f"⚡ Urgencia: {urgency}", font=self.fonts['body'],
+                        bg=self.colors['bg_light'], fg=self.colors['accent_gold']).pack(anchor='e')
+                tk.Label(stats_frame, text=f"📊 Confianza: {confidence}%", font=self.fonts['small'],
+                        bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='e', pady=(5, 0))
             
             # Update instructions
-            self.instructions_text.config(state='normal')
-            self.instructions_text.delete('1.0', tk.END)
-            
-            for instruction in plan['instructions']:
-                self.instructions_text.insert(tk.END, instruction + '\n\n')
-            
-            self.instructions_text.config(state='disabled')
-            
-            # Clear and update recommendations with FILTERS
-            for widget in self.rec_container.winfo_children():
-                widget.destroy()
-            
-            buy_recs = plan['buy_recommendations']
-            
-            # APPLY FILTERS
-            filtered_recs = []
-            for rec in buy_recs:
-                # Filter by league
-                if self.filters['league'] != 'Todas':
-                    if rec.get('league', 'Unknown') != self.filters['league']:
-                        continue
+            if hasattr(self, 'instructions_text'):
+                self.instructions_text.config(state='normal')
+                self.instructions_text.delete('1.0', tk.END)
                 
-                # Filter by position
-                if self.filters['position'] != 'Todas':
-                    pos = rec.get('position', 'Unknown')
-                    if self.filters['position'] == 'DEF' and pos not in ['CB', 'LB', 'RB', 'RWB', 'LWB']:
-                        continue
-                    elif self.filters['position'] == 'MID' and pos not in ['CM', 'CDM', 'CAM', 'RM', 'LM']:
-                        continue
-                    elif self.filters['position'] == 'ATT' and pos not in ['ST', 'CF', 'LW', 'RW']:
-                        continue
-                    elif self.filters['position'] == 'GK' and pos != 'GK':
-                        continue
+                instructions = [
+                    "ESTRATEGIA WEEKEND LEAGUE (Lun-Mar: Comprar | Jue-Vie: Vender)",
+                    "",
+                    "1. 🔍 Revisa las cartas recomendadas abajo (rating 82-84)",
+                    "2. 💰 Compara precios actuales vs históricos",
+                    "3. 📈 Busca cartas con tendencia de subida",
+                    "4. 🎯 Prioriza jugadores con demanda de SBCs activos",
+                    "5. ⏰ IMPORTANTE: Compra Lun/Mar, Vende Jue/Vie",
+                    "6. 🛒 Compra cuando veas -5% o más vs precio promedio",
+                    "7. 💸 Vende cuando veas +10% o más de ganancia"
+                ]
                 
-                # Filter by rating
-                rating = rec.get('rating', 0)
-                if rating < self.filters['rating_min'] or rating > self.filters['rating_max']:
+                for instruction in instructions:
+                    self.instructions_text.insert(tk.END, instruction + '\n\n')
+                
+                self.instructions_text.config(state='disabled')
+            
+            # Get buy recommendations from database
+            self._refresh_buy_recommendations()
+            
+        except Exception as e:
+            logger.error(f"Error refreshing buy recommendations: {e}", exc_info=True)
+            
+    def _refresh_buy_recommendations(self):
+        """Get buy recommendations from database with ML predictions"""
+        try:
+            if not self.db_manager:
+                logger.warning("Database manager no disponible")
+                return
+            
+            # Clear recommendations container
+            if hasattr(self, 'rec_container'):
+                for widget in self.rec_container.winfo_children():
+                    widget.destroy()
+            
+            # Get players from database with price history
+            from app.models.database import Player, PriceHistory
+            session = self.db_manager.get_session()
+            
+            # Build query with filters
+            query = session.query(Player).filter(
+                Player.rating >= self.filters['rating_min'],
+                Player.rating <= self.filters['rating_max'],
+                Player.is_extinct == False
+            )
+            
+            # Apply league filter in query
+            if self.filters['league'] != 'Todas':
+                # Map UI names to database values
+                league_map = {
+                    'Premier League': 'Premier League',
+                    'La Liga': 'LaLiga',  # DB uses LaLiga (sin espacio)
+                    'Serie A': 'Serie A',
+                    'Bundesliga': 'Bundesliga',
+                    'Ligue 1': 'Ligue 1'
+                }
+                db_league = league_map.get(self.filters['league'], self.filters['league'])
+                query = query.filter(Player.league == db_league)
+            
+            # Apply position filter in query (DISABLED - positions are Unknown)
+            # TODO: Fix scraper to capture positions correctly
+            # if self.filters['position'] != 'Todas':
+            #     if self.filters['position'] == 'DEF':
+            #         query = query.filter(Player.position.in_(['CB', 'LB', 'RB', 'RWB', 'LWB']))
+            #     elif self.filters['position'] == 'MID':
+            #         query = query.filter(Player.position.in_(['CM', 'CDM', 'CAM', 'RM', 'LM']))
+            #     elif self.filters['position'] == 'ATT':
+            #         query = query.filter(Player.position.in_(['ST', 'CF', 'LW', 'RW']))
+            #     elif self.filters['position'] == 'GK':
+            #         query = query.filter(Player.position == 'GK')
+            
+            # Execute query
+            players = query.limit(200).all()
+            
+            logger.info(f"🔍 Jugadores encontrados con filtros (rating={self.filters['rating_min']}-{self.filters['rating_max']}, liga={self.filters['league']}, pos={self.filters['position']}): {len(players)}")
+            
+            recommendations = []
+            
+            for player in players:
+                # Get recent price history
+                recent_prices = session.query(PriceHistory).filter(
+                    PriceHistory.player_id == player.id
+                ).order_by(PriceHistory.timestamp.desc()).limit(14).all()
+                
+                # Require at least 1 price entry (changed from 3)
+                if len(recent_prices) < 1:
                     continue
                 
-                filtered_recs.append(rec)
+                current_price = recent_prices[0].price
+                
+                # Calculate average (use current if only 1 entry)
+                if len(recent_prices) >= 3:
+                    avg_price = sum(p.price for p in recent_prices) / len(recent_prices)
+                else:
+                    avg_price = current_price  # No historical data yet
+                
+                # Calculate price change %
+                price_change_pct = ((current_price - avg_price) / avg_price) * 100 if avg_price > 0 else 0
+                
+                recommendations.append({
+                    'player_id': player.id,
+                    'player_name': player.name,
+                    'rating': player.rating,
+                    'position': player.position or 'Unknown',
+                    'league': player.league or 'Unknown',
+                    'current_price': int(current_price),
+                    'avg_price': int(avg_price),
+                    'price_change_pct': price_change_pct,
+                    'buy_score': -price_change_pct,  # Negative change = good buy
+                    'has_enough_history': len(recent_prices) >= 3
+                })
             
-            if not filtered_recs:
+            session.close()
+            
+            # Sort by buy score (best deals first)
+            recommendations.sort(key=lambda x: x['buy_score'], reverse=True)
+            
+            logger.info(f"📊 Recomendaciones con historial suficiente: {len(recommendations)}")
+            
+            # Display recommendations
+            if not recommendations:
                 tk.Label(self.rec_container, 
-                        text="🔍 No hay cartas que cumplan los filtros\n\nIntenta ajustar los filtros o limpiarlos",
+                        text="🔍 No hay cartas que cumplan los filtros actuales\n\nIntenta ajustar los filtros de rating, liga o posición",
                         font=self.fonts['body'],
                         bg=self.colors['bg_dark'], fg=self.colors['text_gray'],
                         justify=tk.CENTER).pack(pady=50)
             else:
-                for i, rec in enumerate(filtered_recs):
-                    self._create_fodder_card(self.rec_container, rec, i)
+                for i, rec in enumerate(recommendations[:20]):  # Top 20
+                    self._create_buy_card(self.rec_container, rec, i)
             
-            logger.info(f"✅ Plan de acción actualizado: {market['action']} ({len(filtered_recs)}/{len(buy_recs)} cartas tras filtros)")
+            # Force canvas update
+            self.rec_container.update_idletasks()
+            self.rec_canvas.configure(scrollregion=self.rec_canvas.bbox('all'))
+            
+            logger.info(f"✅ {len(recommendations)} recomendaciones de compra mostradas")
             
         except Exception as e:
-            logger.error(f"Error refreshing fodder plan: {e}")
+            logger.error(f"Error loading buy recommendations: {e}", exc_info=True)
     
-    def _create_fodder_card(self, parent, rec: Dict[str, Any], index: int):
-        """Create a Fodder Flipping recommendation card with price comparison"""
-        card = tk.Frame(parent, bg=self.colors['bg_medium'], relief=tk.FLAT)
-        card.pack(fill=tk.X, pady=8)
+    def _create_buy_card(self, parent, rec: Dict[str, Any], index: int):
+        """Create a buy recommendation card"""
+        card = tk.Frame(parent, bg=self.colors['bg_light'], relief=tk.FLAT, borderwidth=1)
+        card.pack(fill=tk.X, padx=10, pady=6)
         
-        content = tk.Frame(card, bg=self.colors['bg_medium'])
+        content = tk.Frame(card, bg=self.colors['bg_light'])
         content.pack(fill=tk.X, padx=20, pady=15)
         
-        # Left: Rank and player info
-        left_frame = tk.Frame(content, bg=self.colors['bg_medium'])
-        left_frame.pack(side=tk.LEFT, fill=tk.Y)
+        # Left: Rank with rating badge
+        left_frame = tk.Frame(content, bg=self.colors['bg_light'])
+        left_frame.pack(side=tk.LEFT, padx=(0, 15))
         
-        tk.Label(left_frame, text=f"#{index+1}", font=('Segoe UI', 20, 'bold'),
-                bg=self.colors['bg_medium'], fg=self.colors['accent_gold'],
-                width=3).pack()
+        tk.Label(left_frame, text=f"#{index+1}", font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['bg_light'], fg=self.colors['accent_gold']).pack()
+        
+        # Rating badge
+        rating_badge = tk.Label(left_frame, text=f"⭐ {rec['rating']}", 
+                               font=('Segoe UI', 11, 'bold'),
+                               bg=self.colors['accent_gold'], fg='black',
+                               padx=8, pady=2)
+        rating_badge.pack(pady=(5, 0))
         
         # Center: Player details
-        center_frame = tk.Frame(content, bg=self.colors['bg_medium'])
-        center_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20)
+        center_frame = tk.Frame(content, bg=self.colors['bg_light'])
+        center_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        tk.Label(center_frame, text=rec['player_name'], font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_medium'], fg=self.colors['text_white']).pack(anchor='w')
+        # Player name
+        tk.Label(center_frame, text=rec['player_name'], font=('Segoe UI', 16, 'bold'),
+                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(anchor='w')
         
-        tk.Label(center_frame, text=f"Rating {rec['rating']} • {rec['position']} • {rec['league']}", 
-                font=self.fonts['small'],
-                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(anchor='w', pady=(2, 0))
+        # Position and league
+        info_text = f"📍 {rec['position']}  •  🏆 {rec['league']}"
+        tk.Label(center_frame, text=info_text, 
+                font=('Segoe UI', 11),
+                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='w', pady=(4, 0))
         
-        # PRICE COMPARISON (vs yesterday and last week)
-        price_comparison = self._get_price_comparison(rec.get('player_id'), rec['current_price'])
-        
-        if price_comparison:
-            comp_frame = tk.Frame(center_frame, bg=self.colors['bg_medium'])
-            comp_frame.pack(anchor='w', pady=(8, 0))
+        # Price change indicator
+        change_pct = rec['price_change_pct']
+        if abs(change_pct) > 0.1:  # Only show if there's actual change
+            color = self.colors['accent_green'] if change_pct < 0 else self.colors['accent_red']
+            emoji = "📉 GANANCIA" if change_pct < 0 else "📈 CARO"
+            status_bg = self.colors['accent_green'] if change_pct < -3 else self.colors['bg_medium']
             
-            # Yesterday comparison
-            if price_comparison['yesterday']:
-                change_1d = price_comparison['yesterday']['change_percent']
-                color_1d = self.colors['accent_green'] if change_1d < 0 else self.colors['accent_red']
-                emoji_1d = "📉" if change_1d < 0 else "📈"
-                status_1d = "BUEN MOMENTO" if change_1d < -5 else "CARO"
-                
-                tk.Label(comp_frame, 
-                        text=f"{emoji_1d} {change_1d:+.1f}% vs ayer • {status_1d}",
-                        font=self.fonts['small'],
-                        bg=self.colors['bg_medium'], fg=color_1d).pack(anchor='w')
-            
-            # Last week comparison
-            if price_comparison['last_week']:
-                change_7d = price_comparison['last_week']['change_percent']
-                color_7d = self.colors['accent_green'] if change_7d < 0 else self.colors['accent_red']
-                emoji_7d = "📉" if change_7d < 0 else "📈"
-                
-                tk.Label(comp_frame,
-                        text=f"{emoji_7d} {change_7d:+.1f}% vs semana",
-                        font=self.fonts['small'],
-                        bg=self.colors['bg_medium'], fg=color_7d).pack(anchor='w', pady=(2, 0))
+            status_label = tk.Label(center_frame, 
+                    text=f"{emoji} {abs(change_pct):.1f}% vs promedio",
+                    font=('Segoe UI', 11, 'bold'),
+                    bg=status_bg, fg='white' if change_pct < -3 else color,
+                    padx=10, pady=4)
+            status_label.pack(anchor='w', pady=(8, 0))
+        elif not rec.get('has_enough_history', True):
+            tk.Label(center_frame, text="ℹ️ Historial limitado - precio reciente",
+                    font=('Segoe UI', 10),
+                    bg=self.colors['bg_light'], fg=self.colors['accent_cyan']).pack(anchor='w', pady=(8, 0))
         
-        # Timing info
-        tk.Label(center_frame, text=f"📅 Vender: {rec['when_to_sell']}", 
-                font=self.fonts['body'],
-                bg=self.colors['bg_medium'], fg=self.colors['accent_blue']).pack(anchor='w', pady=(8, 0))
+        # Right: Price info
+        right_frame = tk.Frame(content, bg=self.colors['bg_light'])
+        right_frame.pack(side=tk.RIGHT, padx=(15, 0))
         
-        # BUY BUTTON
-        buy_btn = tk.Button(center_frame, text="✅ COMPRAR EN JUEGO",
-                           command=lambda: self._record_purchase(rec),
-                           bg=self.colors['accent_green'], fg='white',
-                           font=self.fonts['body'],
-                           relief=tk.FLAT, borderwidth=0,
-                           cursor='hand2',
-                           padx=20, pady=8)
-        buy_btn.pack(anchor='w', pady=(10, 0))
+        # Current price - bigger and more visible
+        price_container = tk.Frame(right_frame, bg=self.colors['bg_medium'], padx=15, pady=10)
+        price_container.pack()
         
-        # Right: Price and profit
-        right_frame = tk.Frame(content, bg=self.colors['bg_medium'])
-        right_frame.pack(side=tk.RIGHT)
+        tk.Label(price_container, text="💰 PRECIO", font=('Segoe UI', 9),
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack()
+        tk.Label(price_container, text=f"{rec['current_price']:,}", font=('Segoe UI', 22, 'bold'),
+                bg=self.colors['bg_medium'], fg=self.colors['accent_cyan']).pack()
         
-        # Current price
-        price_frame = tk.Frame(right_frame, bg=self.colors['bg_light'])
-        price_frame.pack(fill=tk.X, pady=(0, 5))
+        # Average price
+        if abs(change_pct) > 0.1:
+            tk.Label(right_frame, text=f"Promedio: {rec['avg_price']:,}", 
+                    font=('Segoe UI', 10),
+                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(5, 0))
         
-        tk.Label(price_frame, text="Comprar", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(8, 2), padx=15)
-        tk.Label(price_frame, text=f"{rec['current_price']:,}", font=('Segoe UI', 16, 'bold'),
-                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(padx=15)
-        tk.Label(price_frame, text="coins", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(0, 8), padx=15)
+        # Quantity selector and buy button
+        action_frame = tk.Frame(right_frame, bg=self.colors['bg_light'])
+        action_frame.pack(pady=(10, 0))
         
-        # Target price
-        target_frame = tk.Frame(right_frame, bg=self.colors['bg_light'])
-        target_frame.pack(fill=tk.X, pady=(0, 5))
+        # Quantity label and spinbox
+        tk.Label(action_frame, text="Cantidad:", font=('Segoe UI', 9),
+                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack()
         
-        tk.Label(target_frame, text="Vender", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(8, 2), padx=15)
-        tk.Label(target_frame, text=f"{rec['target_price']:,}", font=('Segoe UI', 16, 'bold'),
-                bg=self.colors['bg_light'], fg=self.colors['accent_green']).pack(padx=15)
-        tk.Label(target_frame, text="coins", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(0, 8), padx=15)
+        quantity_var = tk.IntVar(value=1)
+        quantity_spinbox = tk.Spinbox(action_frame, from_=1, to=100, width=5,
+                                      textvariable=quantity_var,
+                                      font=('Segoe UI', 11),
+                                      bg=self.colors['bg_medium'],
+                                      fg=self.colors['text_white'],
+                                      buttonbackground=self.colors['accent_blue'],
+                                      relief=tk.FLAT)
+        quantity_spinbox.pack(pady=(2, 8))
         
-        # Profit
-        profit_frame = tk.Frame(right_frame, bg=self.colors['accent_green'])
-        profit_frame.pack(fill=tk.X)
-        
-        tk.Label(profit_frame, text=f"+{rec['profit']:,} coins", font=('Segoe UI', 12, 'bold'),
-                bg=self.colors['accent_green'], fg='white').pack(pady=8, padx=15)
-        tk.Label(profit_frame, text=f"+{rec['profit_percent']}%", font=self.fonts['small'],
-                bg=self.colors['accent_green'], fg='white').pack(pady=(0, 8), padx=15)
+        # Buy button with quantity
+        buy_btn = tk.Button(action_frame, text="🛒 COMPRAR",
+                           command=lambda: self._add_to_inventory(
+                               player_id=rec['player_id'],
+                               player_name=rec['player_name'],
+                               price=rec['current_price'],
+                               quantity=quantity_var.get()
+                           ),
+                           bg=self.colors['accent_blue'], fg='white',
+                           font=('Segoe UI', 11, 'bold'),
+                           relief=tk.FLAT, cursor='hand2',
+                           padx=15, pady=8)
+        buy_btn.pack(pady=(10, 0))
     
     def _record_purchase(self, rec: Dict[str, Any]):
         """Record a purchase transaction with budget validation"""
         try:
-            from app.database.db_manager import DatabaseManager
+            from app.models.database import DatabaseManager
             from app.utils.config_loader import ConfigLoader
             
             db = DatabaseManager()
@@ -2329,7 +2698,7 @@ Características:
             session = db.SessionLocal()
             
             try:
-                from app.database.db_manager import Transaction, Player
+                from app.models.database import Transaction, Player
                 
                 # Find or create player
                 player = session.query(Player).filter(
@@ -2385,300 +2754,6 @@ Características:
             logger.error(f"Error recording purchase: {e}")
             messagebox.showerror("Error", f"Error al registrar compra: {str(e)}")
     
-    def _refresh_recommendations(self):
-        """Refresh buy recommendations list"""
-        # Clear existing
-        for widget in self.rec_container.winfo_children():
-            widget.destroy()
-        
-        try:
-            from app.controllers.trading_engine import TradingEngine
-            from app.controllers.analyzer import MarketAnalyzer
-            from app.controllers.price_predictor import PricePredictor
-            from app.models.db_manager import DatabaseManager
-            from app.utils.config_loader import ConfigLoader
-            
-            # Initialize components properly
-            try:
-                config = ConfigLoader()
-                db = DatabaseManager()
-                analyzer = MarketAnalyzer(config, db)
-                predictor = PricePredictor(config, db)
-                engine = TradingEngine(config, db, analyzer, predictor)
-            except Exception as init_error:
-                logger.error(f"Error initializing components: {init_error}")
-                tk.Label(self.rec_container, 
-                        text=f"⚠️ Error de inicialización: {str(init_error)}",
-                        font=self.fonts['body'],
-                        bg=self.colors['bg_dark'], 
-                        fg=self.colors['accent_red']).pack(pady=50)
-                return
-            
-            # Get recommendations - use real database data
-            try:
-                # Get user's current budget
-                budget_info = config.get_budget_info()
-                user_budget = budget_info['current_budget']
-                tier = budget_info['tier']
-                
-                # Adjust max price based on budget (don't spend more than 80% on one player)
-                max_price = int(user_budget * 0.8)
-                
-                # Get real players from database with prices
-                session = db.get_session()
-                
-                # Get latest prices for all players
-                from sqlalchemy import func
-                latest_prices = session.query(
-                    db.PriceHistory.player_id,
-                    func.max(db.PriceHistory.timestamp).label('latest_time')
-                ).group_by(db.PriceHistory.player_id).subquery()
-                
-                # Join with players to get details
-                results = session.query(
-                    db.Player,
-                    db.PriceHistory.price
-                ).join(
-                    latest_prices,
-                    db.Player.player_id == latest_prices.c.player_id
-                ).join(
-                    db.PriceHistory,
-                    (db.PriceHistory.player_id == latest_prices.c.player_id) &
-                    (db.PriceHistory.timestamp == latest_prices.c.latest_time)
-                ).filter(
-                    db.PriceHistory.price > 0,
-                    db.PriceHistory.price <= max_price,  # Within user's budget
-                    db.Player.is_extinct == False
-                ).order_by(db.Player.rating.desc()).limit(20).all()
-                
-                session.close()
-                
-                # Convert to recommendation format with FC 26 specific strategies
-                recommendations = []
-                for player, price in results:
-                    # Determine strategy based on budget tier, price, and rating (FC 26 2025)
-                    if tier == 'low':
-                        # Budget 0-20K: Focus on bronze/silver and low-budget methods
-                        if price < 800:
-                            strategy = '⚡ Bronze Upgrade SBC'
-                            profit_pct = 30.0
-                            confidence = 0.92
-                        elif price < 2000:
-                            strategy = '📊 Silver Beasts Flip'
-                            profit_pct = 25.0
-                            confidence = 0.88
-                        elif price < 5000:
-                            strategy = '💰 Mass Bidding (59th min)'
-                            profit_pct = 20.0
-                            confidence = 0.85
-                        else:
-                            strategy = '⚡ Snipe + Quick Sell'
-                            profit_pct = 15.0
-                            confidence = 0.78
-                    
-                    elif tier == 'medium':
-                        # Budget 20K-100K: Fodder trading and league SBCs
-                        if player.rating >= 84:
-                            strategy = '🎯 84+ Fodder (SBC Hype)'
-                            profit_pct = 22.0
-                            confidence = 0.90
-                        elif player.rating >= 83:
-                            strategy = '📈 83 Rated Fodder'
-                            profit_pct = 18.0
-                            confidence = 0.88
-                        elif price < 15000:
-                            strategy = '⚽ League SBC Investment'
-                            profit_pct = 20.0
-                            confidence = 0.85
-                        else:
-                            strategy = '🔥 Meta Cards Flip'
-                            profit_pct = 16.0
-                            confidence = 0.82
-                    
-                    elif tier == 'high':
-                        # Budget 100K+: High-rated and special cards
-                        if player.rating >= 87:
-                            strategy = '💎 87+ Icon/Hero SBC'
-                            profit_pct = 14.0
-                            confidence = 0.87
-                        elif player.rating >= 85:
-                            strategy = '⭐ 85+ Fodder Hoard'
-                            profit_pct = 16.0
-                            confidence = 0.89
-                        elif player.rating >= 84:
-                            strategy = '🎯 TOTW Investment'
-                            profit_pct = 18.0
-                            confidence = 0.86
-                        else:
-                            strategy = '🏆 Weekend League Flip'
-                            profit_pct = 15.0
-                            confidence = 0.84
-                    
-                    else:  # elite
-                        # Budget 1M+: Icons, special cards, and market manipulation
-                        if player.rating >= 89:
-                            strategy = '👑 Icon/TOTY Trading'
-                            profit_pct = 10.0
-                            confidence = 0.85
-                        elif player.rating >= 87:
-                            strategy = '💫 Promo Cards Flip'
-                            profit_pct = 12.0
-                            confidence = 0.87
-                        else:
-                            strategy = '📊 Market Manipulation'
-                            profit_pct = 14.0
-                            confidence = 0.82
-                    
-                    profit = int(price * (profit_pct / 100))
-                    
-                    recommendations.append({
-                        'player_name': player.name,
-                        'rating': player.rating,
-                        'current_price': price,
-                        'strategy': strategy,
-                        'confidence': confidence,
-                        'predicted_price': price + profit,
-                        'profit_potential': profit,
-                        'profit_percentage': profit_pct
-                    })
-                
-                # Sort by profit percentage (best opportunities first)
-                recommendations.sort(key=lambda x: x['profit_percentage'], reverse=True)
-                recommendations = recommendations[:10]  # Top 10
-                
-                self._log(f"✓ {len(recommendations)} recomendaciones dentro de tu presupuesto: {user_budget:,} coins")
-                
-            except Exception as e:
-                logger.error(f"Error generating recommendations: {e}")
-                recommendations = []
-            
-            if not recommendations or len(recommendations) == 0:
-                # Show friendly empty state
-                empty_frame = tk.Frame(self.rec_container, bg=self.colors['bg_dark'])
-                empty_frame.pack(expand=True, fill=tk.BOTH, pady=50)
-                
-                tk.Label(empty_frame, text="🔍",
-                        font=('Segoe UI Emoji', 48),
-                        bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=10)
-                tk.Label(empty_frame, 
-                        text="No hay recomendaciones disponibles",
-                        font=('Segoe UI', 14, 'bold'),
-                        bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(pady=5)
-                tk.Label(empty_frame, 
-                        text="Actualiza los precios del mercado para obtener nuevas oportunidades",
-                        font=('Segoe UI', 10),
-                        bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=5)
-                return
-            
-            for i, rec in enumerate(recommendations[:10]):
-                self._create_recommendation_card(self.rec_container, rec, i)
-            
-            self._log(f"{len(recommendations)} recomendaciones cargadas")
-            
-        except Exception as e:
-            logger.error(f"Error refreshing recommendations: {e}")
-            self._log(f"Error: {e}")
-    
-    def _create_recommendation_card(self, parent, rec: Dict[str, Any], index: int):
-        """Create a modern recommendation card widget"""
-        # Main card with hover effect
-        card = tk.Frame(parent, bg=self.colors['bg_medium'], relief=tk.FLAT, borderwidth=0,
-                       highlightbackground=self.colors['accent_blue'], highlightthickness=1)
-        card.pack(fill=tk.X, padx=10, pady=8)
-        
-        # Header with player name and rank
-        header = tk.Frame(card, bg=self.colors['bg_light'])
-        header.pack(fill=tk.X)
-        
-        rank_label = tk.Label(header, text=f"#{index + 1}",
-                             font=('Segoe UI', 16, 'bold'),
-                             bg=self.colors['bg_light'], fg=self.colors['accent_gold'],
-                             width=3)
-        rank_label.pack(side=tk.LEFT, padx=10, pady=10)
-        
-        # Player info section
-        player_info = tk.Frame(header, bg=self.colors['bg_light'])
-        player_info.pack(side=tk.LEFT, padx=5, pady=10, fill=tk.X, expand=True)
-        
-        tk.Label(player_info, text=rec['player_name'],
-                font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(anchor=tk.W)
-        
-        # Strategy label (prominente)
-        tk.Label(player_info, text=f"📋 {rec['strategy']}",
-                font=('Segoe UI', 10),
-                bg=self.colors['bg_light'], fg=self.colors['accent_blue']).pack(anchor=tk.W, pady=(2, 0))
-        
-        # Rating badge
-        rating_color = self.colors['accent_gold'] if rec['rating'] >= 85 else self.colors['accent_blue']
-        rating_frame = tk.Frame(header, bg=rating_color, borderwidth=0)
-        rating_frame.pack(side=tk.RIGHT, padx=10)
-        tk.Label(rating_frame, text=f"⭐ {rec['rating']}",
-                font=('Segoe UI', 11, 'bold'),
-                bg=rating_color, fg=self.colors['bg_dark'],
-                padx=12, pady=4).pack()
-        
-        # Stats row with colorful boxes
-        stats_frame = tk.Frame(card, bg=self.colors['bg_medium'])
-        stats_frame.pack(fill=tk.X, padx=15, pady=15)
-        
-        # Price box
-        price_box = tk.Frame(stats_frame, bg=self.colors['bg_dark'], borderwidth=0)
-        price_box.pack(side=tk.LEFT, padx=5)
-        tk.Label(price_box, text="💵 PRECIO",
-                font=('Segoe UI', 8, 'bold'),
-                bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(padx=10, pady=(8, 2))
-        tk.Label(price_box, text=f"{rec['current_price']:,}",
-                font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(padx=10, pady=(0, 8))
-        
-        # Profit box (highlight)
-        profit_box = tk.Frame(stats_frame, bg=self.colors['accent_green'], borderwidth=0)
-        profit_box.pack(side=tk.LEFT, padx=5)
-        tk.Label(profit_box, text="💰 GANANCIA",
-                font=('Segoe UI', 8, 'bold'),
-                bg=self.colors['accent_green'], fg=self.colors['bg_dark']).pack(padx=10, pady=(8, 2))
-        tk.Label(profit_box, text=f"+{rec['profit_potential']:,}",
-                font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['accent_green'], fg=self.colors['bg_dark']).pack(padx=10, pady=(0, 2))
-        tk.Label(profit_box, text=f"+{rec['profit_percentage']:.1f}%",
-                font=('Segoe UI', 9, 'bold'),
-                bg=self.colors['accent_green'], fg=self.colors['bg_dark']).pack(padx=10, pady=(0, 8))
-        
-        # Confidence box
-        conf_val = rec['confidence']
-        if conf_val > 0.7:
-            conf_color = self.colors['accent_green']
-            conf_text = "ALTA"
-        elif conf_val > 0.5:
-            conf_color = self.colors['accent_gold']
-            conf_text = "MEDIA"
-        else:
-            conf_color = self.colors['accent_red']
-            conf_text = "BAJA"
-        
-        conf_box = tk.Frame(stats_frame, bg=self.colors['bg_dark'], borderwidth=0)
-        conf_box.pack(side=tk.LEFT, padx=5)
-        tk.Label(conf_box, text="📊 CONFIANZA",
-                font=('Segoe UI', 8, 'bold'),
-                bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(padx=10, pady=(8, 2))
-        tk.Label(conf_box, text=conf_text,
-                font=('Segoe UI', 11, 'bold'),
-                bg=self.colors['bg_dark'], fg=conf_color).pack(padx=10, pady=(0, 2))
-        tk.Label(conf_box, text=f"{conf_val*100:.0f}%",
-                font=('Segoe UI', 9),
-                bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(padx=10, pady=(0, 8))
-        
-        # Action button
-        action_btn = tk.Button(stats_frame, text="✅ COMPRAR EN JUEGO",
-                              command=lambda: self._log(f"Recuerda comprar: {rec['player_name']} por {rec['current_price']:,}"),
-                              bg=self.colors['accent_blue'], fg=self.colors['bg_dark'],
-                              font=('Segoe UI', 10, 'bold'),
-                              relief=tk.FLAT, borderwidth=0,
-                              cursor='hand2',
-                              padx=20, pady=10)
-        action_btn.pack(side=tk.RIGHT, padx=5)
-    
     def _get_demo_recommendations(self) -> List[Dict[str, Any]]:
         """Get demo recommendations when database is empty"""
         return [
@@ -2721,230 +2796,235 @@ Características:
             widget.destroy()
         
         try:
-            from app.database.db_manager import DatabaseManager
-            from app.utils.config_loader import ConfigLoader
-            from sqlalchemy import func, select
+            from app.models.database import DatabaseManager, Inventory, Player, PriceHistory
+            from datetime import datetime
             
-            db = DatabaseManager()
-            config = ConfigLoader()
-            session = db.SessionLocal()
+            if not self.db_manager:
+                self._log("⚠️ Database no disponible")
+                return
             
-            try:
-                from app.database.db_manager import Transaction, Player, PriceHistory
+            session = self.db_manager.get_session()
+            
+            # Get inventory items that are still owned
+            inventory_items = session.query(Inventory).filter(
+                Inventory.status == 'owned'
+            ).all()
+            
+            if not inventory_items:
+                # Empty state
+                empty_frame = tk.Frame(self.sell_container, bg=self.colors['bg_dark'])
+                empty_frame.pack(expand=True, fill=tk.BOTH, pady=50)
                 
-                # Get bought cards that haven't been sold
-                # Subquery: Get sell transactions (usando select() para evitar warning)
-                sold_player_ids_subq = select(Transaction.player_id).where(
-                    Transaction.transaction_type == 'sell'
-                ).scalar_subquery()
+                tk.Label(empty_frame, text="📦",
+                        font=('Segoe UI Emoji', 48),
+                        bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=10)
+                tk.Label(empty_frame, 
+                        text="Tu inventario está vacío",
+                        font=('Segoe UI', 14, 'bold'),
+                        bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(pady=5)
+                tk.Label(empty_frame, 
+                        text="Compra cartas en el tab 'Comprar' y aparecerán aquí",
+                        font=('Segoe UI', 10),
+                        bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=5)
                 
-                # Get buy transactions not in sold list
-                inventory = session.query(
-                    Transaction,
-                    Player
-                ).join(
-                    Player,
-                    Transaction.player_id == Player.player_id
-                ).filter(
-                    Transaction.transaction_type == 'buy',
-                    Transaction.status == 'completed',
-                    Transaction.player_id.notin_(sold_player_ids_subq)
-                ).all()
-                
-                if not inventory:
-                    # Empty state
-                    empty_frame = tk.Frame(self.sell_container, bg=self.colors['bg_dark'])
-                    empty_frame.pack(expand=True, fill=tk.BOTH, pady=50)
-                    
-                    tk.Label(empty_frame, text="📦",
-                            font=('Segoe UI Emoji', 48),
-                            bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=10)
-                    tk.Label(empty_frame, 
-                            text="Tu inventario está vacío",
-                            font=('Segoe UI', 14, 'bold'),
-                            bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(pady=5)
-                    tk.Label(empty_frame, 
-                            text="Compra cartas en el tab 'Comprar' y aparecerán aquí",
-                            font=('Segoe UI', 10),
-                            bg=self.colors['bg_dark'], fg=self.colors['text_gray']).pack(pady=5)
-                    return
-                
-                # Get current prices for each card
-                sell_cards = []
-                
-                for transaction, player in inventory:
-                    # Get latest price
-                    latest_price = session.query(PriceHistory).filter(
-                        PriceHistory.player_id == player.player_id
-                    ).order_by(PriceHistory.timestamp.desc()).first()
-                    
-                    current_price = latest_price.price if latest_price else transaction.price
-                    
-                    # Calculate profit
-                    tax = int(current_price * 0.05)
-                    profit = current_price - transaction.price - tax
-                    profit_percent = (profit / transaction.price) * 100 if transaction.price > 0 else 0
-                    
-                    days_held = (datetime.now() - transaction.timestamp).days
-                    
-                    sell_cards.append({
-                        'transaction_id': transaction.id,
-                        'player_id': player.player_id,
-                        'player_name': player.name,
-                        'rating': player.rating,
-                        'position': player.position,
-                        'league': player.league,
-                        'buy_price': transaction.price,
-                        'current_price': current_price,
-                        'profit': profit,
-                        'profit_percent': profit_percent,
-                        'days_held': days_held,
-                        'buy_date': transaction.timestamp,
-                        'should_sell': profit_percent >= 15  # Sell if 15%+ profit
-                    })
-                
-                # Sort by profit percent (best opportunities first)
-                sell_cards.sort(key=lambda x: x['profit_percent'], reverse=True)
-                
-                # Create cards
-                for i, card in enumerate(sell_cards):
-                    self._create_sell_card(self.sell_container, card, i)
-                
-                self._log(f"✓ {len(sell_cards)} cartas en inventario")
-                
-            finally:
                 session.close()
+                return
+            
+            # Get current prices for each card
+            sell_cards = []
+            
+            for item in inventory_items:
+                # Get latest price
+                latest_price = session.query(PriceHistory).filter(
+                    PriceHistory.player_id == item.player_id
+                ).order_by(PriceHistory.timestamp.desc()).first()
+                
+                current_price = latest_price.price if latest_price else item.purchase_price
+                
+                # Calculate profit PER CARD
+                tax_per_card = int(current_price * 0.05)
+                profit_per_card = current_price - item.purchase_price - tax_per_card
+                profit_percent = (profit_per_card / item.purchase_price) * 100 if item.purchase_price > 0 else 0
+                
+                # Total profit for all cards
+                total_profit = profit_per_card * item.quantity
+                
+                days_held = (datetime.now() - item.purchase_date).days
+                
+                sell_cards.append({
+                    'inventory_id': item.id,
+                    'player_id': item.player_id,
+                    'player_name': item.player_name,
+                    'quantity': item.quantity,
+                    'buy_price': item.purchase_price,
+                    'current_price': current_price,
+                    'profit_per_card': profit_per_card,
+                    'total_profit': total_profit,
+                    'profit_percent': profit_percent,
+                    'days_held': days_held,
+                    'buy_date': item.purchase_date,
+                    'should_sell': profit_percent >= 10  # Sell if 10%+ profit
+                })
+            
+            # Sort by profit percent (best opportunities first)
+            sell_cards.sort(key=lambda x: x['profit_percent'], reverse=True)
+            
+            # Create cards
+            for i, card in enumerate(sell_cards):
+                self._create_sell_card(self.sell_container, card, i)
+            
+            # Force canvas update
+            self.sell_container.update_idletasks()
+            self.sell_canvas.configure(scrollregion=self.sell_canvas.bbox('all'))
+            
+            total_cards = sum(card['quantity'] for card in sell_cards)
+            self._log(f"✓ {len(sell_cards)} tipos de cartas en inventario ({total_cards} cartas totales)")
+            
+            session.close()
                 
         except Exception as e:
-            logger.error(f"Error refreshing sell recommendations: {e}")
-            self._log(f"Error: {e}")
+            logger.error(f"Error refreshing sell recommendations: {e}", exc_info=True)
+            self._log(f"❌ Error: {e}")
     
     def _create_sell_card(self, parent, card: Dict[str, Any], index: int):
         """Create a sell recommendation card for inventory"""
-        card_frame = tk.Frame(parent, bg=self.colors['bg_medium'], relief=tk.FLAT)
-        card_frame.pack(fill=tk.X, pady=8)
+        card_frame = tk.Frame(parent, bg=self.colors['bg_light'], relief=tk.FLAT, borderwidth=1)
+        card_frame.pack(fill=tk.X, padx=10, pady=6)
         
-        content = tk.Frame(card_frame, bg=self.colors['bg_medium'])
+        content = tk.Frame(card_frame, bg=self.colors['bg_light'])
         content.pack(fill=tk.X, padx=20, pady=15)
         
-        # Left: Player info
-        left_frame = tk.Frame(content, bg=self.colors['bg_medium'])
+        # Left: Rank + Player info
+        left_frame = tk.Frame(content, bg=self.colors['bg_light'])
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        tk.Label(left_frame, text=card['player_name'], font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_medium'], fg=self.colors['text_white']).pack(anchor='w')
-        
-        tk.Label(left_frame, text=f"Rating {card['rating']} • {card['position']} • {card['league']}", 
-                font=self.fonts['small'],
-                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(anchor='w', pady=(2, 0))
+        # Player name with quantity
+        name_text = f"{card['player_name']} (x{card['quantity']})" if card.get('quantity', 1) > 1 else card['player_name']
+        tk.Label(left_frame, text=name_text, font=('Segoe UI', 16, 'bold'),
+                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(anchor='w')
         
         tk.Label(left_frame, text=f"📅 Comprado hace {card['days_held']} días", 
-                font=self.fonts['small'],
-                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(anchor='w', pady=(5, 0))
+                font=('Segoe UI', 11),
+                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(anchor='w', pady=(5, 0))
+        
+        # Profit indicator
+        profit_pct = card.get('profit_percent', 0)
+        if profit_pct >= 10:
+            status_text = f"📈 +{profit_pct:.1f}% - ¡VENDE AHORA!"
+            status_color = self.colors['accent_green']
+        elif profit_pct >= 5:
+            status_text = f"📊 +{profit_pct:.1f}% - Buen momento"
+            status_color = self.colors['accent_gold']
+        elif profit_pct >= 0:
+            status_text = f"⏱️ +{profit_pct:.1f}% - Espera más"
+            status_color = self.colors['accent_cyan']
+        else:
+            status_text = f"📉 {profit_pct:.1f}% - En pérdida"
+            status_color = self.colors['accent_red']
+        
+        tk.Label(left_frame, text=status_text, 
+                font=('Segoe UI', 12, 'bold'),
+                bg=self.colors['bg_light'], fg=status_color).pack(anchor='w', pady=(8, 0))
         
         # Sell button
-        sell_btn_text = "💰 VENDER AHORA" if card['should_sell'] else "⏳ HOLD"
-        sell_btn_color = self.colors['accent_green'] if card['should_sell'] else self.colors['text_gray']
-        
-        sell_btn = tk.Button(left_frame, text=sell_btn_text,
+        sell_btn = tk.Button(left_frame, text="💰 MARCAR COMO VENDIDO",
                             command=lambda: self._record_sale(card),
-                            bg=sell_btn_color, fg='white',
-                            font=self.fonts['body'],
-                            relief=tk.FLAT, borderwidth=0,
-                            cursor='hand2',
+                            bg=self.colors['accent_green'], fg='white',
+                            font=('Segoe UI', 11, 'bold'),
+                            relief=tk.FLAT, cursor='hand2',
                             padx=20, pady=8)
-        sell_btn.pack(anchor='w', pady=(10, 0))
+        sell_btn.pack(anchor='w', pady=(12, 0))
         
-        # Right: Prices and profit
-        right_frame = tk.Frame(content, bg=self.colors['bg_medium'])
-        right_frame.pack(side=tk.RIGHT)
+        # Right: Prices
+        right_frame = tk.Frame(content, bg=self.colors['bg_light'])
+        right_frame.pack(side=tk.RIGHT, padx=(15, 0))
+        
+        # Price table
+        price_table = tk.Frame(right_frame, bg=self.colors['bg_medium'], padx=15, pady=10)
+        price_table.pack()
         
         # Buy price
-        buy_frame = tk.Frame(right_frame, bg=self.colors['bg_light'])
-        buy_frame.pack(fill=tk.X, pady=(0, 5))
-        
-        tk.Label(buy_frame, text="Comprado", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(8, 2), padx=15)
-        tk.Label(buy_frame, text=f"{card['buy_price']:,}", font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(padx=15)
-        tk.Label(buy_frame, text="coins", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(0, 8), padx=15)
+        tk.Label(price_table, text="💳 Compra (c/u)", font=('Segoe UI', 9),
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).grid(row=0, column=0, sticky='w', pady=2)
+        tk.Label(price_table, text=f"{card['buy_price']:,}", font=('Segoe UI', 11, 'bold'),
+                bg=self.colors['bg_medium'], fg=self.colors['text_white']).grid(row=0, column=1, sticky='e', padx=(10,0), pady=2)
         
         # Current price
-        current_frame = tk.Frame(right_frame, bg=self.colors['bg_light'])
-        current_frame.pack(fill=tk.X, pady=(0, 5))
+        tk.Label(price_table, text="💰 Actual (c/u)", font=('Segoe UI', 9),
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).grid(row=1, column=0, sticky='w', pady=2)
+        tk.Label(price_table, text=f"{card['current_price']:,}", font=('Segoe UI', 11, 'bold'),
+                bg=self.colors['bg_medium'], fg=self.colors['accent_cyan']).grid(row=1, column=1, sticky='e', padx=(10,0), pady=2)
         
-        tk.Label(current_frame, text="Precio Actual", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(8, 2), padx=15)
-        tk.Label(current_frame, text=f"{card['current_price']:,}", font=('Segoe UI', 14, 'bold'),
-                bg=self.colors['bg_light'], fg=self.colors['accent_green']).pack(padx=15)
-        tk.Label(current_frame, text="coins", font=self.fonts['small'],
-                bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(pady=(0, 8), padx=15)
+        # Profit per card
+        profit_color = self.colors['accent_green'] if card.get('profit_per_card', 0) >= 0 else self.colors['accent_red']
+        profit_symbol = "+" if card.get('profit_per_card', 0) >= 0 else ""
+        tk.Label(price_table, text="📊 Ganancia (c/u)", font=('Segoe UI', 9),
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).grid(row=2, column=0, sticky='w', pady=2)
+        tk.Label(price_table, text=f"{profit_symbol}{card.get('profit_per_card', 0):,}", font=('Segoe UI', 11, 'bold'),
+                bg=self.colors['bg_medium'], fg=profit_color).grid(row=2, column=1, sticky='e', padx=(10,0), pady=2)
         
-        # Profit
-        profit_color = self.colors['accent_green'] if card['profit'] >= 0 else self.colors['accent_red']
-        profit_frame = tk.Frame(right_frame, bg=profit_color)
-        profit_frame.pack(fill=tk.X)
-        
-        profit_symbol = "+" if card['profit'] >= 0 else ""
-        tk.Label(profit_frame, text=f"{profit_symbol}{card['profit']:,} coins", 
-                font=('Segoe UI', 12, 'bold'),
-                bg=profit_color, fg='white').pack(pady=8, padx=15)
-        tk.Label(profit_frame, text=f"{profit_symbol}{card['profit_percent']:.1f}%", 
-                font=self.fonts['small'],
-                bg=profit_color, fg='white').pack(pady=(0, 8), padx=15)
+        # Total profit (if multiple cards)
+        if card.get('quantity', 1) > 1:
+            tk.Label(price_table, text=f"💎 Total ({card['quantity']}x)", font=('Segoe UI', 9, 'bold'),
+                    bg=self.colors['bg_medium'], fg=self.colors['accent_gold']).grid(row=3, column=0, sticky='w', pady=(8,2))
+            tk.Label(price_table, text=f"{profit_symbol}{card.get('total_profit', 0):,}", font=('Segoe UI', 13, 'bold'),
+                    bg=self.colors['bg_medium'], fg=self.colors['accent_gold']).grid(row=3, column=1, sticky='e', padx=(10,0), pady=(8,2))
     
     def _record_sale(self, card: Dict[str, Any]):
-        """Record a sale transaction"""
+        """Record a sale transaction - mark inventory as sold"""
         try:
-            from app.database.db_manager import DatabaseManager
-            from app.utils.config_loader import ConfigLoader
+            from app.models.database import Inventory
+            from datetime import datetime
+            from tkinter import messagebox
             
-            db = DatabaseManager()
-            config = ConfigLoader()
-            session = db.SessionLocal()
+            if not self.db_manager:
+                self._log("⚠️ Database no disponible")
+                return
             
-            try:
-                from app.database.db_manager import Transaction
-                
-                # Create sell transaction
-                sell_transaction = Transaction(
-                    player_id=card['player_id'],
-                    transaction_type='sell',
-                    price=card['current_price'],
-                    profit=card['profit'],
-                    timestamp=datetime.now(),
-                    status='completed'
-                )
-                session.add(sell_transaction)
-                
-                # Update budget (add sale price)
-                budget_info = config.get_budget_info()
-                new_budget = budget_info['current_budget'] + card['current_price']
-                config.update_budget(new_budget)
-                
-                session.commit()
-                
-                # Update UI
-                self._load_budget()
-                self._refresh_sell_recommendations()
-                self._log(f"✅ Venta registrada: {card['player_name']} por {card['current_price']:,} coins (+{card['profit']:,})")
-                
-                # Show confirmation
-                messagebox.showinfo(
-                    "Venta Registrada",
-                    f"💰 {card['player_name']}\n\n"
-                    f"Precio venta: {card['current_price']:,} coins\n"
-                    f"Ganancia: +{card['profit']:,} coins ({card['profit_percent']:+.1f}%)\n"
-                    f"Nuevo presupuesto: {new_budget:,} coins\n\n"
-                    f"¡Buen trabajo! 🎉"
-                )
-                
-            finally:
+            session = self.db_manager.get_session()
+            
+            # Get inventory item
+            inventory_item = session.query(Inventory).filter(
+                Inventory.id == card['inventory_id']
+            ).first()
+            
+            if not inventory_item:
+                self._log("❌ Carta no encontrada en inventario")
                 session.close()
+                return
+            
+            # Update inventory item as sold
+            inventory_item.status = 'sold'
+            inventory_item.sell_price = card['current_price']
+            inventory_item.sell_date = datetime.now()
+            inventory_item.profit = card.get('total_profit', 0)
+            
+            session.commit()
+            
+            # Update UI
+            self._refresh_sell_recommendations()
+            
+            total_sale = card['current_price'] * card.get('quantity', 1)
+            total_profit = card.get('total_profit', 0)
+            
+            self._log(f"✅ VENTA REGISTRADA: {card.get('quantity', 1)}x {card['player_name']} @ {card['current_price']:,} = {total_sale:,} coins (+{total_profit:,} ganancia)")
+            self._log(f"💡 Ve a EA FC 26 y vende {card.get('quantity', 1)} carta(s) de {card['player_name']}")
+            
+            # Show confirmation
+            messagebox.showinfo(
+                "Venta Registrada",
+                f"💰 {card['player_name']} (x{card.get('quantity', 1)})\n\n"
+                f"Precio venta (c/u): {card['current_price']:,} coins\n"
+                f"Total: {total_sale:,} coins\n"
+                f"Ganancia total: +{total_profit:,} coins\n\n"
+                f"¡Buen trabajo! 🎉"
+            )
+            
+            session.close()
                 
         except Exception as e:
-            logger.error(f"Error recording sale: {e}")
+            logger.error(f"Error recording sale: {e}", exc_info=True)
+            from tkinter import messagebox
             messagebox.showerror("Error", f"Error al registrar venta: {str(e)}")
     
     def _refresh_bidding_recommendations(self):
@@ -2954,8 +3034,8 @@ Características:
             widget.destroy()
         
         try:
-            from app.database.db_manager import DatabaseManager
-            from app.database.db_manager import Player, PriceHistory
+            from app.models.database import DatabaseManager
+            from app.models.database import Player, PriceHistory
             from sqlalchemy import func
             from datetime import datetime, timedelta
             
@@ -3333,12 +3413,12 @@ Características:
             self.history_tree.delete(item)
         
         try:
-            from app.database.db_manager import DatabaseManager
+            from app.models.database import DatabaseManager
             db = DatabaseManager()
             session = db.SessionLocal()
             
             try:
-                from app.database.db_manager import Transaction, Player
+                from app.models.database import Transaction, Player
                 
                 # Get all transactions with player info
                 transactions = session.query(
@@ -3710,7 +3790,7 @@ Características:
         """Get real market data from database (last 7 days)"""
         try:
             from app.utils.config_loader import ConfigLoader
-            from app.database.db_manager import DatabaseManager
+            from app.models.database import DatabaseManager
             from sqlalchemy import func
             
             config = ConfigLoader()
@@ -3721,7 +3801,7 @@ Características:
             
             try:
                 # Get top 100 most traded players
-                from app.database.db_manager import Player, PriceHistory
+                from app.models.database import Player, PriceHistory
                 
                 # Query for last 7 days of price data
                 seven_days_ago = datetime.now() - timedelta(days=7)
@@ -3789,7 +3869,7 @@ Características:
             return None
         
         try:
-            from app.database.db_manager import PriceHistory
+            from app.models.database import PriceHistory
             from datetime import datetime, timedelta
             
             session = self.db_manager.SessionLocal()
@@ -3860,7 +3940,7 @@ Características:
     def _clear_filters(self):
         """Clear all filters"""
         self.league_filter.set("Todas")
-        self.position_filter.set("Todas")
+        # Position filter disabled
         self.rating_min_filter.set("82")
         self.rating_max_filter.set("84")
         
@@ -3879,7 +3959,7 @@ Características:
         self.profit_chart_range = range_type
         
         try:
-            from app.database.db_manager import DatabaseManager, Transaction
+            from app.models.database import DatabaseManager, Transaction
             from datetime import datetime, timedelta
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg

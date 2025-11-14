@@ -74,6 +74,22 @@ class MarketSnapshot(Base):
     timestamp = Column(DateTime, default=datetime.now, nullable=False)
     market_trend = Column(String(20))  # bull, bear, neutral
 
+class Inventory(Base):
+    """Inventory model - tracks multiple purchases of same player"""
+    __tablename__ = 'inventory'
+    
+    id = Column(Integer, primary_key=True)
+    player_id = Column(String(50), nullable=False)
+    player_name = Column(String(200), nullable=False)
+    purchase_price = Column(Integer, nullable=False)
+    purchase_date = Column(DateTime, default=datetime.now, nullable=False)
+    quantity = Column(Integer, default=1, nullable=False)  # Number of cards purchased at this price
+    status = Column(String(20), default='owned')  # owned, listed, sold
+    sell_price = Column(Integer)  # Price sold at (if sold)
+    sell_date = Column(DateTime)  # Date sold
+    profit = Column(Integer)  # Total profit (sell_price - purchase_price) * quantity
+    notes = Column(Text)  # Optional notes (e.g., "Weekend League snipe", "SBC investment")
+
 class DatabaseManager:
     """Manages database connections and operations"""
     
@@ -96,6 +112,7 @@ class DatabaseManager:
         self.Transaction = Transaction
         self.Prediction = Prediction
         self.MarketSnapshot = MarketSnapshot
+        self.Inventory = Inventory
         
     def initialize(self):
         """Create all tables"""

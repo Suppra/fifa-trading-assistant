@@ -1,0 +1,48 @@
+{
+  "first_run": false,
+  "last_full_update": "2025-11-14T11:31:23.808416",
+  "last_incremental_update": "2025-11-14T12:35:32.399990",
+  "total_players": 644,
+  "update_history": [
+    {
+      "type": "initial",
+      "date": "2025-11-14T11:31:23.808427",
+      "players": 644
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T11:44:38.042940",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T11:52:24.037032",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T11:57:14.472397",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T12:05:44.617573",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T12:14:38.484909",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T12:23:05.346082",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T12:35:32.399997",
+      "players": 0
+    }
+  ]
+}
