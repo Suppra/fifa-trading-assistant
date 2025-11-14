@@ -147,13 +147,11 @@ def test_peak_hours():
         
         # Analizar horas pico de un jugador (si hay datos)
         session = db.get_session()
-        price_with_hour = session.query(db.PriceHistory).filter(
-            db.PriceHistory.hour_of_day.isnot(None)
-        ).first()
+        price_record = session.query(db.PriceHistory).first()
         session.close()
         
-        if price_with_hour:
-            analysis = peak_service.analyze_peak_hours(price_with_hour.player_id)
+        if price_record:
+            analysis = peak_service.analyze_peak_hours(price_record.player_id)
             
             if 'error' not in analysis:
                 logger.info(f"\n✅ Análisis de horas pico:")

@@ -52,9 +52,14 @@ class TradingBotApp:
             'text_white': '#FFFFFF',        # Primary text
             'text_gray': '#8E8E93',         # Secondary text
             'text_light': '#C7C7CC',        # Tertiary text
+            'text_muted': '#6E6E73',        # Muted text
             'border': '#2C2C2E',            # Subtle borders
             'chart_green': '#30D158',       # Chart positive
-            'chart_red': '#FF453A'          # Chart negative
+            'chart_red': '#FF453A',         # Chart negative
+            'success': '#00C805',           # Success color (alias)
+            'danger': '#FF3B30',            # Danger color (alias)
+            'warning': '#FFD60A',           # Warning color (alias)
+            'info': '#0A84FF'               # Info color (alias)
         }
         
         # Light theme colors
@@ -72,9 +77,14 @@ class TradingBotApp:
             'text_white': '#000000',
             'text_gray': '#6E6E73',
             'text_light': '#48484A',
+            'text_muted': '#8E8E93',
             'border': '#D1D1D6',
             'chart_green': '#30D158',
-            'chart_red': '#FF453A'
+            'chart_red': '#FF453A',
+            'success': '#00C805',
+            'danger': '#FF3B30',
+            'warning': '#FFD60A',
+            'info': '#0A84FF'
         }
         
         # Load theme from config
@@ -94,6 +104,7 @@ class TradingBotApp:
             'subheader': ('SF Pro Display', 14, 'bold'),
             'body': ('SF Pro Text', 11),
             'small': ('SF Pro Text', 9),
+            'small_bold': ('SF Pro Text', 10, 'bold'),
             'mono': ('SF Mono', 10)
         }
         
@@ -107,6 +118,7 @@ class TradingBotApp:
                 'subheader': ('Segoe UI', 14, 'bold'),
                 'body': ('Segoe UI', 11),
                 'small': ('Segoe UI', 9),
+                'small_bold': ('Segoe UI', 10, 'bold'),
                 'mono': ('Consolas', 10)
             }
         

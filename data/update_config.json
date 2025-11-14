@@ -1,7 +1,7 @@
 {
   "first_run": false,
   "last_full_update": "2025-11-14T11:31:23.808416",
-  "last_incremental_update": "2025-11-14T12:35:32.399990",
+  "last_incremental_update": "2025-11-14T17:02:35.963349",
   "total_players": 644,
   "update_history": [
     {
@@ -42,6 +42,16 @@
     {
       "type": "incremental",
       "date": "2025-11-14T12:35:32.399997",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T16:55:00.937780",
+      "players": 0
+    },
+    {
+      "type": "incremental",
+      "date": "2025-11-14T17:02:35.963356",
       "players": 0
     }
   ]

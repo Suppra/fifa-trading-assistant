@@ -106,24 +106,24 @@ class PeakHoursService:
             # Fecha de inicio
             start_date = datetime.now() - timedelta(days=days)
             
-            # Obtener precios con hora
+            # Obtener precios
             price_records = session.query(self.db_manager.PriceHistory).filter(
                 self.db_manager.PriceHistory.player_id == player_id,
-                self.db_manager.PriceHistory.timestamp >= start_date,
-                self.db_manager.PriceHistory.hour_of_day.isnot(None)
+                self.db_manager.PriceHistory.timestamp >= start_date
             ).all()
             
             if not price_records:
                 return {
-                    'error': 'No hay datos suficientes con horas',
+                    'error': 'No hay datos suficientes',
                     'player_id': player_id
                 }
             
-            # Agrupar por hora (0-23)
+            # Agrupar por hora (0-23) - extraer de timestamp
             hour_prices = defaultdict(list)
             
             for record in price_records:
-                hour = record.hour_of_day
+                # Extraer hora del timestamp
+                hour = record.timestamp.hour if hasattr(record.timestamp, 'hour') else 12
                 price = record.price
                 hour_prices[hour].append(price)
             
@@ -201,21 +201,21 @@ class PeakHoursService:
             
             start_date = datetime.now() - timedelta(days=days)
             
-            # Obtener todos los precios con hora
+            # Obtener todos los precios
             price_records = session.query(self.db_manager.PriceHistory).filter(
-                self.db_manager.PriceHistory.timestamp >= start_date,
-                self.db_manager.PriceHistory.hour_of_day.isnot(None)
+                self.db_manager.PriceHistory.timestamp >= start_date
             ).all()
             
             if not price_records:
                 return {'error': 'No hay datos suficientes'}
             
-            # Agrupar por hora
+            # Agrupar por hora - extraer de timestamp
             hour_activity = defaultdict(int)
             hour_prices = defaultdict(list)
             
             for record in price_records:
-                hour = record.hour_of_day
+                # Extraer hora del timestamp
+                hour = record.timestamp.hour if hasattr(record.timestamp, 'hour') else 12
                 hour_activity[hour] += 1
                 hour_prices[hour].append(record.price)
             
@@ -233,7 +233,7 @@ class PeakHoursService:
                         'hour': f"{hour:02d}:00",
                         'activity_count': activity,
                         'avg_price': int(avg_price),
-                        'unique_players': len(set(r.player_id for r in price_records if r.hour_of_day == hour))
+                        'unique_players': len(set(r.player_id for r in price_records if (r.timestamp.hour if hasattr(r.timestamp, 'hour') else 12) == hour))
                     }
             
             # Identificar horas de mayor actividad
@@ -319,8 +319,7 @@ class PeakHoursService:
             price_entry = self.db_manager.PriceHistory(
                 player_id=player_id,
                 price=price,
-                timestamp=datetime.now(),
-                hour_of_day=hour
+                timestamp=datetime.now()
             )
             
             session.add(price_entry)
