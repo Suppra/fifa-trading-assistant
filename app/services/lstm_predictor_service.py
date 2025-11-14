@@ -41,8 +41,55 @@ class LSTMPricePredictor:
         self.model = None
         self.sequence_length = 14  # Usar últimos 14 días para predecir
         
+        # Cache de modelos cargados en memoria
+        self._model_cache = {}  # {player_id: (model, scaler, timestamp)}
+        self._cache_max_age = 3600  # Cache válido por 1 hora
+        
         if not TENSORFLOW_AVAILABLE:
             logger.error("❌ TensorFlow no está instalado. LSTM no disponible.")
+    
+    def _get_cached_model(self, player_id: str) -> Optional[Tuple]:
+        """
+        Obtiene modelo del cache si existe y es válido
+        
+        Returns:
+            (model, scaler) si cache válido, None si no
+        """
+        if player_id not in self._model_cache:
+            return None
+        
+        model, scaler, cached_at = self._model_cache[player_id]
+        
+        # Verificar edad del cache
+        cache_age = (datetime.now() - cached_at).total_seconds()
+        
+        if cache_age > self._cache_max_age:
+            # Cache expirado
+            logger.debug(f"Cache expirado para {player_id} ({cache_age:.0f}s)")
+            del self._model_cache[player_id]
+            return None
+        
+        logger.debug(f"✅ Usando modelo cacheado para {player_id} ({cache_age:.0f}s old)")
+        return model, scaler
+    
+    def _cache_model(self, player_id: str, model, scaler):
+        """Almacena modelo en cache"""
+        self._model_cache[player_id] = (model, scaler, datetime.now())
+        logger.debug(f"💾 Modelo cacheado para {player_id} (Total: {len(self._model_cache)} modelos)")
+    
+    def clear_cache(self):
+        """Limpia todo el cache de modelos"""
+        count = len(self._model_cache)
+        self._model_cache.clear()
+        logger.info(f"🗑️ Cache limpiado: {count} modelos removidos")
+    
+    def get_cache_info(self) -> Dict[str, Any]:
+        """Información sobre el cache de modelos"""
+        return {
+            'cached_models': len(self._model_cache),
+            'player_ids': list(self._model_cache.keys()),
+            'max_age_seconds': self._cache_max_age
+        }
     
     def prepare_training_data(self, player_id: str, min_days: int = 90) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """
@@ -238,22 +285,34 @@ class LSTMPricePredictor:
             if not TENSORFLOW_AVAILABLE:
                 return {'error': 'TensorFlow no disponible'}
             
-            # Cargar modelo si existe
-            model_path = self.models_dir / f"lstm_{player_id}.h5"
-            scaler_path = self.models_dir / f"scaler_{player_id}.pkl"
+            # Intentar obtener del cache primero
+            cached = self._get_cached_model(player_id)
             
-            if not model_path.exists():
-                logger.warning(f"Modelo no encontrado para {player_id}. Entrenando...")
-                train_result = self.train_model(player_id)
+            if cached:
+                # Usar modelo cacheado
+                model, scaler = cached
+                self.model = model
+                self.scaler = scaler
+            else:
+                # Cargar desde disco
+                model_path = self.models_dir / f"lstm_{player_id}.h5"
+                scaler_path = self.models_dir / f"scaler_{player_id}.pkl"
                 
-                if 'error' in train_result:
-                    return train_result
-            
-            # Cargar modelo y scaler
-            self.model = load_model(model_path)
-            
-            with open(scaler_path, 'rb') as f:
-                self.scaler = pickle.load(f)
+                if not model_path.exists():
+                    logger.warning(f"Modelo no encontrado para {player_id}. Entrenando...")
+                    train_result = self.train_model(player_id)
+                    
+                    if 'error' in train_result:
+                        return train_result
+                
+                # Cargar modelo y scaler desde archivos
+                self.model = load_model(model_path)
+                
+                with open(scaler_path, 'rb') as f:
+                    self.scaler = pickle.load(f)
+                
+                # Cachear para próximas predicciones
+                self._cache_model(player_id, self.model, self.scaler)
             
             # Obtener últimos N días de precios
             session = self.db_manager.get_session()

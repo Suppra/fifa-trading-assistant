@@ -129,11 +129,17 @@ class TradingBotApp:
             from app.utils.auto_save import AutoSaveManager
             from app.utils.query_cache import db_cache
             from app.utils.sbc_tracker import SBCTracker
+            from app.utils.windows_notifications import get_notifier
             
             self.alert_manager = PriceAlertManager()
             self.auto_save = AutoSaveManager(save_interval=300)  # 5 min
             self.db_cache = db_cache
             self.sbc_tracker = SBCTracker()
+            self.notifier = get_notifier()
+            
+            # Test notification on startup
+            if self.notifier.is_enabled():
+                self.notifier.test_notification()
             
             # Actualizar SBCs al iniciar (datos frescos)
             logger.info("🔄 Actualizando SBCs al iniciar aplicación...")
@@ -150,6 +156,7 @@ class TradingBotApp:
             self.auto_save = None
             self.db_cache = None
             self.sbc_tracker = None
+            self.notifier = None
         
         # Initialize Database Manager
         try:
@@ -160,6 +167,25 @@ class TradingBotApp:
             # Initialize alert manager with DB
             if self.alert_manager:
                 self.alert_manager.db = self.db_manager
+            
+            # Initialize advanced services
+            try:
+                from app.services.historical_trends_service import HistoricalTrendsService
+                from app.services.portfolio_service import PortfolioService
+                from app.services.peak_hours_service import PeakHoursService
+                from app.services.futbin_service import FUTBINScraper
+                
+                self.futbin_scraper = FUTBINScraper()
+                self.trends_service = HistoricalTrendsService(self.db_manager)
+                self.portfolio_service = PortfolioService(self.db_manager)
+                self.peak_hours_service = PeakHoursService(self.db_manager, self.futbin_scraper)
+                
+                logger.info("✅ Servicios avanzados inicializados (tendencias, portfolio, peak hours)")
+            except Exception as e:
+                logger.warning(f"⚠️ Error inicializando servicios avanzados: {e}")
+                self.trends_service = None
+                self.portfolio_service = None
+                self.peak_hours_service = None
             
             logger.info("✅ Database Manager iniciado")
         except Exception as e:
@@ -646,6 +672,65 @@ class TradingBotApp:
                 font=self.fonts['header'],
                 bg=self.colors['bg_medium'], fg=self.colors['text_white']).pack(side=tk.LEFT)
         
+        # Peak Hours Indicator (right side of header)
+        self.peak_hours_indicator = tk.Label(plan_header, text="⏰ Analizando...", 
+                                            font=self.fonts['body'],
+                                            bg=self.colors['bg_medium'], 
+                                            fg=self.colors['text_muted'])
+        self.peak_hours_indicator.pack(side=tk.RIGHT, padx=10)
+        
+        # Peak Hours Info Card (below header)
+        self.peak_hours_card = tk.Frame(action_plan_card, bg=self.colors['bg_light'])
+        self.peak_hours_card.pack(fill=tk.X, padx=20, pady=(0, 10))
+        
+        peak_info_frame = tk.Frame(self.peak_hours_card, bg=self.colors['bg_light'])
+        peak_info_frame.pack(fill=tk.X, padx=15, pady=10)
+        
+        # Buy Window
+        buy_frame = tk.Frame(peak_info_frame, bg=self.colors['bg_light'])
+        buy_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+        
+        tk.Label(buy_frame, text="🌙 MEJOR COMPRA", 
+                font=self.fonts['small_bold'],
+                bg=self.colors['bg_light'], 
+                fg=self.colors['info']).pack(anchor='w')
+        
+        self.best_buy_time_label = tk.Label(buy_frame, text="--:-- - --:--", 
+                                           font=self.fonts['body'],
+                                           bg=self.colors['bg_light'], 
+                                           fg=self.colors['text_white'])
+        self.best_buy_time_label.pack(anchor='w')
+        
+        # Sell Window
+        sell_frame = tk.Frame(peak_info_frame, bg=self.colors['bg_light'])
+        sell_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+        
+        tk.Label(sell_frame, text="🔥 MEJOR VENTA", 
+                font=self.fonts['small_bold'],
+                bg=self.colors['bg_light'], 
+                fg=self.colors['success']).pack(anchor='w')
+        
+        self.best_sell_time_label = tk.Label(sell_frame, text="--:-- - --:--", 
+                                            font=self.fonts['body'],
+                                            bg=self.colors['bg_light'], 
+                                            fg=self.colors['text_white'])
+        self.best_sell_time_label.pack(anchor='w')
+        
+        # Current Action
+        action_frame = tk.Frame(peak_info_frame, bg=self.colors['bg_light'])
+        action_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+        
+        tk.Label(action_frame, text="💡 AHORA", 
+                font=self.fonts['small_bold'],
+                bg=self.colors['bg_light'], 
+                fg=self.colors['warning']).pack(anchor='w')
+        
+        self.current_action_label = tk.Label(action_frame, text="Calculando...", 
+                                            font=self.fonts['body'],
+                                            bg=self.colors['bg_light'], 
+                                            fg=self.colors['text_white'])
+        self.current_action_label.pack(anchor='w')
+        
         # Market Moment Section
         self.market_moment_frame = tk.Frame(action_plan_card, bg=self.colors['bg_light'])
         self.market_moment_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
@@ -702,7 +787,59 @@ class TradingBotApp:
         self._refresh_fodder_plan()
     
     def _create_sell_tab(self, parent):
-        """Create sell recommendations tab with modern design"""
+        """Create sell recommendations tab with modern design and portfolio stats"""
+        # Portfolio Stats Section (NEW)
+        stats_section = tk.Frame(parent, bg=self.colors['bg_dark'])
+        stats_section.pack(fill=tk.X, padx=20, pady=(10, 15))
+        
+        tk.Label(stats_section, text="💼 Estadísticas del Portfolio", font=self.fonts['subheader'],
+                bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(anchor='w', pady=(0, 10))
+        
+        # Stats cards row
+        stats_row = tk.Frame(stats_section, bg=self.colors['bg_dark'])
+        stats_row.pack(fill=tk.X)
+        
+        # Investment card
+        inv_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        inv_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(inv_card, text="Inversión Total", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(12, 3))
+        self.portfolio_investment_label = tk.Label(inv_card, text="0", font=self.fonts['header'],
+                                                   bg=self.colors['bg_medium'], fg=self.colors['text_white'])
+        self.portfolio_investment_label.pack(padx=15, pady=(0, 12))
+        
+        # Value card
+        val_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        val_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(val_card, text="Valor Actual", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(12, 3))
+        self.portfolio_value_label = tk.Label(val_card, text="0", font=self.fonts['header'],
+                                              bg=self.colors['bg_medium'], fg=self.colors['accent_cyan'])
+        self.portfolio_value_label.pack(padx=15, pady=(0, 12))
+        
+        # Profit card
+        profit_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        profit_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(profit_card, text="Profit No Realizado", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(12, 3))
+        self.portfolio_profit_label = tk.Label(profit_card, text="+0", font=self.fonts['header'],
+                                               bg=self.colors['bg_medium'], fg=self.colors['accent_green'])
+        self.portfolio_profit_label.pack(padx=15, pady=(0, 12))
+        
+        # ROI card
+        roi_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        roi_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        tk.Label(roi_card, text="ROI Global", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(12, 3))
+        self.portfolio_roi_label = tk.Label(roi_card, text="0.0%", font=self.fonts['header'],
+                                            bg=self.colors['bg_medium'], fg=self.colors['accent_gold'])
+        self.portfolio_roi_label.pack(padx=15, pady=(0, 12))
+        
+        # Toolbar
         toolbar = tk.Frame(parent, bg=self.colors['bg_dark'], height=50)
         toolbar.pack(fill=tk.X, padx=0, pady=(10, 10))
         
@@ -863,13 +1000,30 @@ Estrategia recomendada:
         graph_header = tk.Frame(graph_card, bg=self.colors['bg_medium'])
         graph_header.pack(fill=tk.X, padx=20, pady=(20, 10))
         
-        tk.Label(graph_header, text="📊 Tendencia del Mercado (Últimos 7 Días)", 
+        tk.Label(graph_header, text="📊 Tendencias Históricas del Mercado", 
                 font=self.fonts['subheader'],
                 bg=self.colors['bg_medium'], fg=self.colors['text_white']).pack(anchor='w')
         
-        tk.Label(graph_header, text="Promedio de precios de las top 100 cartas más tradeadas", 
-                font=self.fonts['small'],
-                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(anchor='w')
+        # Selector de días
+        selector_frame = tk.Frame(graph_header, bg=self.colors['bg_medium'])
+        selector_frame.pack(anchor='w', pady=(5, 0))
+        
+        tk.Label(selector_frame, text="Período:", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Days selector variable
+        self.trend_days_var = tk.StringVar(value="7")
+        
+        for days in ['7', '30', '90']:
+            rb = tk.Radiobutton(selector_frame, text=f"{days} días",
+                               variable=self.trend_days_var, value=days,
+                               command=self._refresh_market_graph,
+                               bg=self.colors['bg_medium'], fg=self.colors['text_white'],
+                               selectcolor=self.colors['bg_light'],
+                               activebackground=self.colors['bg_medium'],
+                               activeforeground=self.colors['accent_blue'],
+                               font=self.fonts['small'])
+            rb.pack(side=tk.LEFT, padx=5)
         
         # Create matplotlib graph
         self._create_market_graph(graph_card)
@@ -971,33 +1125,44 @@ Estrategia recomendada:
             return "🌃 NOCHE", self.colors['accent_blue'], "MEDIA", "MIXTO"
     
     def _create_market_graph(self, parent):
-        """Create market trend graph using matplotlib"""
+        """Create market trend graph using matplotlib with historical trends"""
         # Create figure
         fig = Figure(figsize=(12, 4), dpi=100, facecolor=self.colors['bg_medium'])
         ax = fig.add_subplot(111)
         
-        # Try to get real data from database
-        real_dates, real_prices = self._get_market_data_from_db()
+        # Get selected period
+        days = int(self.trend_days_var.get()) if hasattr(self, 'trend_days_var') else 7
+        
+        # Try to get real data from trends service
+        real_dates, real_prices, trend_info = self._get_historical_trends_data(days)
         
         if real_dates and real_prices and len(real_prices) > 1:
-            # Use real data from database
+            # Use real data from historical trends
             dates = real_dates
             prices = real_prices
-            logger.info(f"Using real market data: {len(prices)} days")
+            logger.info(f"Using historical trends data: {len(prices)} days")
         else:
-            # Fallback to sample data if no real data available
-            dates = [datetime.now() - timedelta(days=i) for i in range(6, -1, -1)]
-            base_price = 50000
-            prices = []
+            # Fallback to database data
+            real_dates, real_prices = self._get_market_data_from_db()
             
-            for i, date in enumerate(dates):
-                # Add some realistic variation
-                variation = base_price * (0.1 * (i % 3 - 1))
-                weekend_boost = 5000 if date.strftime('%A') in ['Saturday', 'Sunday'] else 0
-                price = base_price + variation + weekend_boost
-                prices.append(price)
-            
-            logger.warning("No real market data found, using sample data")
+            if real_dates and real_prices and len(real_prices) > 1:
+                dates = real_dates
+                prices = real_prices
+                logger.info(f"Using database market data: {len(prices)} days")
+            else:
+                # Fallback to sample data if no real data available
+                dates = [datetime.now() - timedelta(days=i) for i in range(days-1, -1, -1)]
+                base_price = 50000
+                prices = []
+                
+                for i, date in enumerate(dates):
+                    variation = base_price * (0.1 * (i % 3 - 1))
+                    weekend_boost = 5000 if date.strftime('%A') in ['Saturday', 'Sunday'] else 0
+                    price = base_price + variation + weekend_boost
+                    prices.append(price)
+                
+                logger.warning("No real market data found, using sample data")
+                trend_info = None
         
         # Predict tomorrow's price (simple linear extrapolation)
         if len(prices) >= 2:
@@ -2886,6 +3051,9 @@ Características:
             self.rec_container.update_idletasks()
             self.rec_canvas.configure(scrollregion=self.rec_canvas.bbox('all'))
             
+            # Update peak hours indicator
+            self._update_peak_hours_indicator()
+            
             logger.info(f"✅ {len(recommendations)} recomendaciones de compra mostradas")
             
         except Exception as e:
@@ -3207,6 +3375,9 @@ Características:
             self._log(f"✓ {len(sell_cards)} tipos de cartas en inventario ({total_cards} cartas totales)")
             
             session.close()
+            
+            # Update portfolio stats (NEW)
+            self._update_portfolio_stats()
                 
         except Exception as e:
             logger.error(f"Error refreshing sell recommendations: {e}", exc_info=True)
@@ -3352,6 +3523,138 @@ Características:
             logger.error(f"Error recording sale: {e}", exc_info=True)
             from tkinter import messagebox
             messagebox.showerror("Error", f"Error al registrar venta: {str(e)}")
+    
+    def _update_portfolio_stats(self):
+        """Update portfolio statistics display from portfolio service"""
+        try:
+            if not hasattr(self, 'portfolio_service') or not self.portfolio_service:
+                # Set default values if service not available
+                self.portfolio_investment_label.config(text="0")
+                self.portfolio_value_label.config(text="0")
+                self.portfolio_profit_label.config(text="0")
+                self.portfolio_roi_label.config(text="0.0%")
+                return
+            
+            # Get portfolio summary
+            summary = self.portfolio_service.get_portfolio_summary()
+            
+            # Update investment
+            investment = summary.get('total_investment', 0)
+            self.portfolio_investment_label.config(text=f"{investment:,}")
+            
+            # Update current value
+            current_value = summary.get('total_value', 0)
+            self.portfolio_value_label.config(text=f"{current_value:,}")
+            
+            # Update unrealized profit
+            profit = summary.get('unrealized_profit', 0)
+            profit_symbol = "+" if profit >= 0 else ""
+            profit_color = self.colors['success'] if profit >= 0 else self.colors['danger']
+            self.portfolio_profit_label.config(
+                text=f"{profit_symbol}{profit:,}",
+                foreground=profit_color
+            )
+            
+            # Update ROI percentage
+            roi = summary.get('roi_pct', 0.0)
+            roi_color = self.colors['success'] if roi >= 0 else self.colors['danger']
+            self.portfolio_roi_label.config(
+                text=f"{roi:+.1f}%",
+                foreground=roi_color
+            )
+            
+            # Check for ROI milestones and notify
+            if self.notifier and self.notifier.is_enabled():
+                # Only notify on significant milestones
+                if roi >= 10 and not hasattr(self, '_roi_10_notified'):
+                    self.notifier.notify_roi_milestone(roi, profit)
+                    self._roi_10_notified = True
+                elif roi >= 5 and not hasattr(self, '_roi_5_notified'):
+                    self.notifier.notify_roi_milestone(roi, profit)
+                    self._roi_5_notified = True
+            
+            self._log(f"📊 Portfolio actualizado: {investment:,} → {current_value:,} ({roi:+.1f}%)")
+            
+        except Exception as e:
+            logger.error(f"Error updating portfolio stats: {e}", exc_info=True)
+            # Set error state
+            self.portfolio_investment_label.config(text="Error")
+            self.portfolio_value_label.config(text="Error")
+            self.portfolio_profit_label.config(text="Error")
+            self.portfolio_roi_label.config(text="Error")
+    
+    def _update_peak_hours_indicator(self):
+        """Update peak hours indicator with optimal buy/sell windows"""
+        try:
+            if not hasattr(self, 'peak_hours_service') or not self.peak_hours_service:
+                self.peak_hours_indicator.config(text="⏰ No disponible", fg=self.colors['text_muted'])
+                self.best_buy_time_label.config(text="--:-- - --:--")
+                self.best_sell_time_label.config(text="--:-- - --:--")
+                self.current_action_label.config(text="Sin datos")
+                return
+            
+            # Get hourly recommendations
+            recommendations = self.peak_hours_service.get_hourly_recommendations()
+            
+            if not recommendations:
+                self.peak_hours_indicator.config(text="⏰ Sin datos suficientes", fg=self.colors['text_muted'])
+                return
+            
+            from datetime import datetime
+            current_hour = datetime.now().hour
+            
+            # Extract best windows
+            best_buy = recommendations.get('best_buy_window', {})
+            best_sell = recommendations.get('best_sell_window', {})
+            current = recommendations.get('current_hour_action', 'ESPERAR')
+            
+            # Update indicator in header
+            if current == 'COMPRAR':
+                indicator_text = f"⏰ 🛒 COMPRAR (Hora óptima: {current_hour}:00)"
+                indicator_color = self.colors['info']
+            elif current == 'VENDER':
+                indicator_text = f"⏰ 💰 VENDER (Hora óptima: {current_hour}:00)"
+                indicator_color = self.colors['success']
+            else:
+                indicator_text = f"⏰ ⏸️ ESPERAR (Hora actual: {current_hour}:00)"
+                indicator_color = self.colors['warning']
+            
+            self.peak_hours_indicator.config(text=indicator_text, fg=indicator_color)
+            
+            # Update best buy window
+            if best_buy:
+                buy_start = best_buy.get('start_hour', 0)
+                buy_end = best_buy.get('end_hour', 0)
+                buy_savings = best_buy.get('avg_savings_pct', 0)
+                self.best_buy_time_label.config(
+                    text=f"{buy_start:02d}:00 - {buy_end:02d}:00 (-{buy_savings:.1f}%)"
+                )
+            
+            # Update best sell window
+            if best_sell:
+                sell_start = best_sell.get('start_hour', 0)
+                sell_end = best_sell.get('end_hour', 0)
+                sell_profit = best_sell.get('avg_profit_pct', 0)
+                self.best_sell_time_label.config(
+                    text=f"{sell_start:02d}:00 - {sell_end:02d}:00 (+{sell_profit:.1f}%)"
+                )
+            
+            # Update current action
+            action_text = current
+            if current == 'COMPRAR':
+                action_color = self.colors['info']
+            elif current == 'VENDER':
+                action_color = self.colors['success']
+            else:
+                action_color = self.colors['text_muted']
+            
+            self.current_action_label.config(text=action_text, foreground=action_color)
+            
+            self._log(f"⏰ Hora óptima actualizada: {current} (Hora actual: {current_hour}:00)")
+            
+        except Exception as e:
+            logger.error(f"Error updating peak hours indicator: {e}", exc_info=True)
+            self.peak_hours_indicator.config(text="⏰ Error", fg=self.colors['danger'])
     
     def _refresh_bidding_recommendations(self):
         """Refresh mass bidding recommendations with optimal bid ranges"""
@@ -4111,6 +4414,56 @@ Características:
         
         # Update every second
         self.root.after(1000, self._update_realtime_clock)
+    
+    def _get_historical_trends_data(self, days=7):
+        """Get historical trends data from trends service"""
+        try:
+            if not hasattr(self, 'trends_service') or not self.trends_service:
+                return None, None, None
+            
+            # Get a top-rated player to analyze
+            session = self.db_manager.get_session()
+            
+            player = session.query(self.db_manager.Player).filter(
+                self.db_manager.Player.rating >= 85
+            ).first()
+            
+            if not player:
+                session.close()
+                return None, None, None
+            
+            player_id = player.player_id
+            session.close()
+            
+            # Get price graph data
+            graph_data = self.trends_service.get_price_graph_data(player_id, days=days)
+            
+            if not graph_data or 'data' not in graph_data or not graph_data['data']:
+                return None, None, None
+            
+            # Extract dates and prices
+            dates = []
+            prices = []
+            
+            for point in graph_data['data']:
+                timestamp_ms = point['timestamp']
+                price = point['price']
+                
+                # Convert timestamp from milliseconds to datetime
+                dt = datetime.fromtimestamp(timestamp_ms / 1000)
+                dates.append(dt)
+                prices.append(price)
+            
+            # Get trend info
+            trend_data = self.trends_service.detect_price_trends(player_id, days=days)
+            
+            logger.info(f"Historical trends loaded: {len(dates)} days for {player.name}")
+            
+            return dates, prices, trend_data
+            
+        except Exception as e:
+            logger.error(f"Error getting historical trends data: {e}")
+            return None, None, None
     
     def _get_market_data_from_db(self):
         """Get real market data from database (last 7 days)"""
