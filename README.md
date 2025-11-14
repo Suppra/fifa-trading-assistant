@@ -1,84 +1,220 @@
-# EA FC 26 Trading Bot ⚽💰
+# EA FC 26 Trading Bot Pro ⚽💰
 
-Bot inteligente de trading para EA FC 26 (FIFA) con interfaz moderna, integración Discord y predicciones ML.
+Bot inteligente de trading para EA FC 26 con ML avanzado, datos reales de FUTBIN y sistema de inventario.
 
-## 🚀 Características Principales
+**Created by xSuppra** • Última actualización: Noviembre 2025
 
-- ✨ **Interfaz de Escritorio Moderna** - UI estilo Robinhood con diseño limpio
-- 📊 **Análisis de Mercado en Tiempo Real** - Tracking de 12+ SBCs activos de FUTBIN
-- 🤖 **Predicciones ML** - Machine Learning para predecir movimientos de precios
-- 💬 **Integración Discord** - Notificaciones y comandos en Discord
-- 📈 **Auto-Updates** - Actualización automática de SBCs diariamente a las 13:20
-- 💾 **Auto-Save** - Guardado automático de configuración y presupuesto
-- 🎯 **Estrategias de Trading** - Sniping, Mass Bidding, Fodder Flipping, SBC Trading
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![FUTBIN](https://img.shields.io/badge/Data-FUTBIN%20Real-orange)](https://www.futbin.com)
 
-## 📁 Estructura del Proyecto (MVC Architecture)
+## ✨ Características Principales
+
+### 🎯 Sistema de Trading Inteligente
+- **Datos 100% Reales** - Scraping directo desde FUTBIN.com
+- **Estrategia Weekend League** - Compra Lun/Mar, Vende Jue/Vie
+- **Predicciones ML Avanzadas** - Eventos, SBCs, detección de anomalías
+- **Sistema de Inventario** - Tracking multi-carta con profit real
+
+### 🤖 Machine Learning Enhanced
+- **Calendario de Eventos** - Weekend League, TOTW, TOTY, TOTS, etc.
+- **Análisis de SBCs** - Impacto automático en demanda de jugadores
+- **Detección de Anomalías** - Identifica crashes y spikes de precio
+- **30+ Features Avanzados** - Volatilidad, momentum, tendencias
+- **Ensemble Predictions** - Combina 5 métodos para mayor precisión
+
+### 💻 Interfaz Moderna
+- **UI Estilo Robinhood** - Diseño limpio y profesional
+- **Actualización Automática** - Sistema inteligente de updates desde FUTBIN
+- **Descarga Paralela** - 3 hilos concurrentes para velocidad
+- **Splash Screen** - Progreso en tiempo real de actualizaciones
+
+### 📊 Gestión Avanzada
+- **Inventario Multi-Carta** - Compra 1-100 copias de la misma carta
+- **Profit Tracking** - Seguimiento detallado de ganancias por carta
+- **Filtros Inteligentes** - Liga, rating, posición (auto-mapping)
+- **Auto-Save** - Guardado automático de configuración
+
+## 🚀 Instalación Rápida
+
+### Requisitos Previos
+- Python 3.8 o superior
+- Windows 10/11 (optimizado para Windows)
+- 4GB RAM mínimo
+- Conexión a Internet
+
+### 1. Clonar Repositorio
+
+```bash
+git clone https://github.com/Suppra/fifa-trading-assistant.git
+cd fifa-trading-assistant
+```
+
+### 2. Instalar Dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Inicializar Base de Datos
+
+```bash
+python scripts/setup_database.py
+```
+
+### 4. Lanzar Aplicación
+
+```bash
+python launcher.py
+```
+
+La aplicación automáticamente:
+1. Descargará ~900 jugadores de FUTBIN (primera vez)
+2. Actualizará precios en tiempo real
+3. Iniciará la interfaz de escritorio
+
+## 📱 Modo de Uso
+
+### Primera Ejecución (20-30 minutos)
+El splash screen descargará datos iniciales de FUTBIN:
+- 30 páginas en paralelo (~900 jugadores)
+- Precios PC reales
+- Identificación de jugadores extintos
+- Configuración de base de datos
+
+### Ejecuciones Siguientes (3-5 minutos)
+Actualización incremental:
+- Solo actualiza jugadores ya existentes
+- Mucho más rápido que descarga completa
+- Mantiene datos frescos y precisos
+
+### Actualizaciones Manuales
+Desde **Ajustes** → **Actualización de Base de Datos**:
+- **Completa**: 50 páginas (~1500 jugadores, ~15 min)
+- **Rápida**: Solo existentes (~5 min)
+
+## 🎮 Características Detalladas
+
+### 📈 Sistema de Predicciones ML
+
+#### Eventos Detectados Automáticamente
+- **Weekend League**: Todos los viernes → Precios suben
+- **TOTW**: Todos los miércoles → Volatilidad alta
+- **TOTY**: 12-26 Enero → Mercado en caída
+- **TOTS**: 26 Abril - 7 Junio → Precios máximos
+- **Black Friday**: 24-28 Noviembre → Crash masivo
+
+#### Análisis de SBCs
+```python
+# Ejemplo: SBC requiere 84 rated
+sbc_impact = 0.6  # 60% de demanda extra
+precio_ajustado = 5000 * (1 + 0.6 * 0.15)  # +9% = 5,450 coins
+```
+
+#### Detección de Anomalías (Z-Score)
+- **Crash** (z < -2.5): ¡Comprar barato!
+- **Spike** (z > 2.5): ¡Vender caro!
+- **Normal** (|z| < 2.5): Precio estable
+
+### 🛒 Sistema de Inventario
+
+#### Comprar Cartas
+1. Tab **Comprar** → Buscar carta
+2. Seleccionar cantidad (1-100)
+3. Click **🛒 COMPRAR**
+4. Ve al juego y compra manualmente
+
+#### Vender Cartas
+1. Tab **Vender** → Ver inventario
+2. Carta muestra:
+   - Precio compra vs actual
+   - Ganancia por carta
+   - Ganancia total (si múltiples)
+3. Click **💰 MARCAR COMO VENDIDO**
+4. Ve al juego y vende
+
+#### Profit Indicators
+- 🟢 **+10%+**: ¡VENDE AHORA!
+- 🟡 **+5-10%**: Buen momento
+- 🔵 **+0-5%**: Espera más
+- 🔴 **Negativo**: En pérdida
+
+### 📊 Filtros Inteligentes
+
+#### Filtro de Liga
+```python
+# Mapeo automático UI → DB
+"La Liga" → "LaLiga"  # Sin espacio en FUTBIN
+"Premier League" → "Premier League"  # Exacto
+```
+
+#### Filtro de Rating
+- 82-84: Fodder bajo
+- 84-86: Fodder medio
+- 86-88: Alto rating
+- 88+: Elite/Icons
+
+### 🔄 Sistema de Actualizaciones
+
+#### Estrategia Inteligente (update_strategy.py)
+1. **Primera vez**: 30 páginas paralelas
+2. **Diaria**: Incremental (solo existentes)
+3. **Semanal**: Completa (50 páginas)
+
+#### Descarga Paralela
+```python
+# 3 hilos concurrentes
+scraper.get_all_players_parallel(
+    max_pages=30,
+    num_threads=3,
+    progress_callback=actualizar_barra
+)
+```
+
+## 📁 Arquitectura del Proyecto (MVC)
 
 ```
 fifa-trading-assistant/
-├── app/                          # Aplicación principal (MVC)
-│   ├── __init__.py
-│   ├── models/                   # Modelos de datos (Database)
-│   │   ├── __init__.py
-│   │   └── database.py           # ORM con SQLAlchemy
-│   ├── views/                    # Interfaces de usuario
-│   │   ├── __init__.py
-│   │   └── desktop_ui.py         # Tkinter Desktop App
-│   ├── controllers/              # Lógica de negocio
-│   │   ├── __init__.py
-│   │   ├── market_controller.py  # Análisis de mercado
-│   │   ├── prediction_controller.py # Predicciones ML
-│   │   └── trading_controller.py # Motor de trading
-│   ├── services/                 # Servicios externos
-│   │   ├── __init__.py
-│   │   ├── futbin_service.py     # Scraper de FUTBIN
-│   │   ├── market_service.py     # Servicio de mercado
-│   │   ├── discord_service.py    # Bot de Discord
-│   │   ├── dashboard_api.py      # API REST (Flask)
-│   │   └── price_generator_service.py # Generador de precios
-│   └── utils/                    # Utilidades
-│       ├── __init__.py
-│       ├── config_loader.py      # Configuración
-│       ├── logger.py             # Logging
-│       ├── auto_save.py          # Auto-guardado
-│       ├── price_alerts.py       # Alertas de precio
-│       ├── sbc_tracker.py        # Tracker de SBCs
-│       └── query_cache.py        # Cache de queries
-├── config/                       # Archivos de configuración
-│   ├── .env.example             # Variables de entorno
-│   └── budget_config.json       # Configuración de presupuesto
-├── docs/                         # Documentación
-│   ├── ACTUALIZACIONES_AUTOMATICAS.md
-│   ├── DATOS_REALES_README.md
-│   ├── DISCORD_SETUP.txt
-│   ├── ESTRATEGIAS_11K.md
-│   ├── GUIA_USO.md
-│   ├── IMPLEMENTACION_FEATURES.md
-│   ├── MODERN_UI_README.md
-│   ├── NUEVAS_FUNCIONES.md
-│   ├── README_v2.md
-│   ├── RESUMEN_FINAL.md
-│   └── RESUMEN_IMPLEMENTACION.md
-├── scripts/                      # Scripts auxiliares
+├── app/                          # Aplicación principal
+│   ├── models/
+│   │   └── database.py           # SQLAlchemy: Player, PriceHistory, Inventory, Transaction
+│   ├── views/
+│   │   ├── desktop_ui.py         # 🖥️ Interfaz principal Tkinter
+│   │   └── splash_screen.py      # ⚡ Pantalla de carga con updates
+│   ├── controllers/
+│   │   ├── market_controller.py  # 📊 Análisis de mercado
+│   │   ├── prediction_controller.py # 🤖 ML con eventos y SBCs
+│   │   └── trading_controller.py # 💰 Motor de trading
+│   ├── services/
+│   │   ├── futbin_service.py     # 🌐 Scraper FUTBIN (paralelo)
+│   │   ├── market_service.py     # 📈 Servicio de mercado
+│   │   ├── discord_service.py    # 💬 Bot de Discord
+│   │   └── price_generator_service.py # 🔧 Generador (testing)
+│   └── utils/
+│       ├── config_loader.py      # ⚙️ Configuración
+│       ├── logger.py             # 📝 Logging
+│       ├── auto_save.py          # 💾 Auto-guardado
+│       ├── price_alerts.py       # 🔔 Alertas de precio
+│       ├── sbc_tracker.py        # 🎯 Tracker de SBCs
+│       ├── update_strategy.py    # 🔄 Estrategia de updates
+│       └── query_cache.py        # 🚀 Cache de queries
+├── scripts/
 │   ├── setup_database.py        # Inicializar BD
-│   ├── setup_discord_service.py # Configurar Discord
-│   ├── configure_discord.py     # Wizard de Discord
-│   ├── update_prices*.py        # Actualizar precios
-│   ├── migrate_*.py             # Migraciones
-│   ├── clean_*.py               # Limpieza
-│   ├── test_*.py                # Tests
+│   ├── update_prices_pc.py      # Actualizar precios PC
+│   ├── configure_discord.py     # Wizard Discord
+│   ├── test_futbin.py           # Test scraper
 │   └── *.bat                    # Scripts Windows
-├── data/                         # Datos de la aplicación
-│   └── trading.db               # Base de datos SQLite
-├── logs/                         # Logs de la aplicación
-├── models/                       # Modelos ML entrenados
-├── reports/                      # Reportes generados
-├── desktop_app.py               # 🚀 PUNTO DE ENTRADA PRINCIPAL
-├── discord_bot.py               # Ejecutar solo Discord bot
-├── launcher.py                  # Launcher interactivo
-├── requirements.txt             # Dependencias Python
-└── .gitignore                   # Archivos ignorados
-
+├── data/
+│   ├── trading.db               # 💾 Base de datos SQLite
+│   └── update_config.json       # 📊 Estado de actualizaciones
+├── docs/
+│   ├── DATOS_REALES_CONFIRMACION.md # ✅ Verificación datos reales
+│   ├── ML_ENHANCEMENTS.md       # 🤖 Guía sistema ML
+│   ├── ESTRATEGIAS_11K.md       # 💰 Trading bajo presupuesto
+│   └── GUIA_USO.md              # 📖 Guía completa
+├── launcher.py                  # 🚀 PUNTO DE ENTRADA
+├── desktop_app.py               # 🖥️ App directa (sin splash)
+└── requirements.txt             # 📦 Dependencias
 ```
 
 ## ⚙️ Instalación
@@ -117,42 +253,64 @@ DISCORD_CHANNEL_ID=tu_canal_id_aqui
 python scripts/setup_database.py
 ```
 
-## 🎮 Uso
+## 🎮 Uso Rápido
 
-### Opción 1: Aplicación de Escritorio (Recomendada)
-
-```bash
-python desktop_app.py
-```
-
-Esta es la forma principal de usar el bot. Incluye:
-- Dashboard con métricas en tiempo real
-- Navegación lateral moderna
-- Tabs: Comprar, Vender, SBCs, Mercado, Historial, ML Predicciones, Discord, Ajustes
-- Auto-actualización de SBCs diariamente a las 13:20
-- Integración Discord desde la UI
-
-### Opción 2: Launcher Interactivo
+### Lanzar Aplicación (Recomendado)
 
 ```bash
 python launcher.py
 ```
 
-Menú interactivo con opciones:
-1. Iniciar App de Escritorio
-2. Iniciar Trading Bot (CLI)
-3. Iniciar Bot de Discord
-4. Ver Estado del Sistema
-5. Configurar Discord
-6. Salir
+Esto iniciará:
+1. **Splash Screen** con actualización de datos FUTBIN
+2. **Interfaz Principal** cuando termine la carga
 
-### Opción 3: Solo Discord Bot
+### Lanzar Sin Actualización
 
 ```bash
-python discord_bot.py
+python desktop_app.py
 ```
 
-Inicia solo el bot de Discord para recibir notificaciones.
+Inicia directamente (sin splash screen ni update).
+
+## 📊 Tabs de la Aplicación
+
+### 🛒 Tab Comprar
+- Recomendaciones ML basadas en datos reales
+- Filtros: Liga, Rating (82-84 recomendado)
+- Plan de acción según día de la semana
+- Indicador de precio (ganancia vs promedio)
+- Selector de cantidad (1-100 cartas)
+
+### 💰 Tab Vender
+- Inventario de cartas compradas
+- Profit por carta y total
+- Indicadores de color según ganancia
+- Botón "Marcar como Vendido"
+
+### 🎯 Tab SBCs
+- SBCs activos scraped de FUTBIN
+- Impacto en mercado de jugadores
+- Requisitos detallados (rating, química)
+
+### 📈 Tab Mercado
+- Estado actual del mercado
+- Gráfico de tendencias (7 días)
+- Predicciones ML para mañana
+- Análisis de actividad por hora
+
+### 📚 Tab Historial
+- Todas las transacciones
+- Gráfico de profit semanal
+- Filtros por tipo y fecha
+
+### ⚙️ Tab Ajustes
+- Configurar presupuesto
+- Cambiar tema (claro/oscuro)
+- **Actualización Manual DB**
+  - Completa: 50 páginas
+  - Rápida: Solo existentes
+- Configurar Discord (futuro)
 
 ## 📱 Comandos de Discord
 
@@ -191,35 +349,110 @@ Desde la app de escritorio:
 
 O edita `config/budget_config.json` manualmente.
 
-## 📊 Características Técnicas
+## 🔧 Stack Tecnológico
 
-### Arquitectura MVC
+### Core
+- **Python 3.8+** - Lenguaje principal
+- **SQLAlchemy 2.0** - ORM para base de datos
+- **SQLite** - Base de datos (built-in, no setup)
 
-- **Models**: SQLAlchemy ORM con modelos Player, Transaction, PriceHistory
-- **Views**: Tkinter con diseño moderno tipo Robinhood
-- **Controllers**: Lógica de negocio separada (Market, Prediction, Trading)
-- **Services**: Servicios externos (FUTBIN, Discord, API)
-- **Utils**: Utilidades reutilizables (Config, Logger, Cache)
+### UI & Visualización
+- **Tkinter** - Interfaz de escritorio nativa
+- **Matplotlib** - Gráficos de tendencias
+- **ttk** - Widgets modernos
 
-### Stack Tecnológico
+### Web Scraping
+- **Requests** - Cliente HTTP
+- **BeautifulSoup4** - Parser HTML
+- **lxml** - Parser XML rápido
 
-- **Python 3.8+**
-- **SQLAlchemy** - ORM para base de datos
-- **Tkinter** - Interfaz de escritorio
-- **Discord.py** - Bot de Discord
-- **BeautifulSoup4** - Web scraping
+### Machine Learning
 - **Pandas** - Análisis de datos
-- **Flask** - API REST (opcional)
-- **Matplotlib** - Gráficos y visualizaciones
+- **NumPy** - Operaciones numéricas
+- **scikit-learn** - Modelos ML
+- **Prophet** - Series temporales (opcional)
 
-### SBC Tracker
+### Opcional
+- **Discord.py** - Bot de Discord
+- **Flask** - API REST
+- **XGBoost** - ML avanzado
 
-- URL: `https://www.futbin.com/26/squad-building-challenges`
-- Scraper HTML con selector: `div.sbc-card-wrapper`
-- Extracción de 12+ SBCs en tiempo real
-- Auto-actualización diaria a las 13:20 (hora de actualización de EA)
-- Polling cada 60 segundos para verificar horario
-- Parser robusto de requisitos (rating, química, jugadores)
+## 📊 Base de Datos (SQLite)
+
+### Tablas Principales
+
+#### `players`
+```sql
+- id (PK)
+- player_id (FUTBIN ID único)
+- name, rating, position
+- league, club, nationality
+- is_extinct (bool)
+```
+
+#### `price_history`
+```sql
+- id (PK)
+- player_id (FK)
+- price (int)
+- timestamp (datetime)
+- supply, demand
+```
+
+#### `inventory` 🆕
+```sql
+- id (PK)
+- player_id (FK)
+- player_name
+- purchase_price, purchase_date
+- quantity (1-100)
+- status ('owned', 'listed', 'sold')
+- sell_price, sell_date
+- profit, notes
+```
+
+#### `transactions` (legacy)
+```sql
+- id (PK)
+- player_id (FK)
+- transaction_type ('buy', 'sell')
+- price, profit
+- timestamp, status
+```
+
+## 🌐 Integración con FUTBIN
+
+### URLs Utilizadas
+```python
+# Base
+https://www.futbin.com/26
+
+# Listado de jugadores
+/players?page=1&minrating=82&maxrating=84
+
+# Jugador específico
+/player/{player_id}/{player_name}
+
+# SBCs activos
+/squad-building-challenges
+
+# API de precios (no oficial)
+/playerPrices?player=ID1,ID2,ID3
+```
+
+### Extracción de Precios PC
+```python
+# Método 1: Regex en texto
+match = re.search(r'([\d,]+)\s+on\s+PC', html_text)
+
+# Método 2: Atributo HTML
+price_elem.get('data-price-pc')
+```
+
+### Rate Limiting
+- 1 segundo entre requests (configurado)
+- 3 hilos concurrentes en descarga paralela
+- Retry automático en error 429 (Too Many Requests)
 
 ## 📝 Scripts Útiles
 
@@ -248,68 +481,192 @@ python scripts/test_sbc_scraper.py
 python scripts/test_futbin.py
 ```
 
-## 🐛 Troubleshooting
+## 🐛 Solución de Problemas
 
-### Error: "No module named 'app'"
-
-Asegúrate de estar ejecutando desde la raíz del proyecto:
+### Error: ModuleNotFoundError
 
 ```bash
+# Reinstalar dependencias
+pip install -r requirements.txt
+
+# Verificar desde raíz del proyecto
 cd fifa-trading-assistant
-python desktop_app.py
+python launcher.py
 ```
 
-### Discord Bot no conecta
-
-1. Verifica que `.env` esté en la raíz (no en `config/`)
-2. Comprueba que `DISCORD_BOT_TOKEN` sea válido
-3. Habilita **MESSAGE CONTENT INTENT** en Discord Developer Portal
-4. Consulta `docs/DISCORD_SETUP.txt`
-
-### SBCs no se actualizan
-
-- Los SBCs se actualizan automáticamente a las **13:20** (1:20 PM)
-- También se cargan al iniciar la aplicación
-- Verifica logs en `logs/trading_bot.log`
-
-### Base de datos corrupta
+### Base de Datos Vacía
 
 ```bash
-# Eliminar BD antigua
-rm data/trading.db
+# Primera vez: Inicializar
+python scripts/setup_database.py
 
-# Crear nueva
+# Luego: Lanzar app (descargará datos automáticamente)
+python launcher.py
+```
+
+### Actualización Muy Lenta
+
+La primera actualización tarda ~20-30 minutos (descarga completa).
+Actualizaciones siguientes: 3-5 minutos (incremental).
+
+Para forzar update rápido:
+- Ajustes → **Actualización Rápida** (solo existentes)
+
+### Liga Filter Sin Resultados
+
+852 de 871 jugadores tienen `league=NULL` en FUTBIN.
+Esto es normal - FUTBIN no siempre captura la liga.
+
+Filtrar por rating funciona correctamente.
+
+### Discord Bot (Opcional)
+
+```bash
+# Configurar .env
+DISCORD_BOT_TOKEN=tu_token
+DISCORD_CHANNEL_ID=tu_canal_id
+
+# Habilitar MESSAGE CONTENT INTENT en Discord Developer Portal
+# Consultar docs/DISCORD_SETUP.txt
+```
+
+## 📝 Scripts Útiles
+
+### Actualizar Precios Manualmente
+
+```bash
+# Actualización completa (lenta)
+python scripts/update_prices_pc.py
+
+# Solo jugadores existentes (rápida)
+python scripts/update_prices.py
+```
+
+### Limpiar Base de Datos
+
+```bash
+# Limpiar transacciones antiguas
+python scripts/clean_old_transactions.py
+
+# Resetear base de datos completa
+rm data/trading.db
 python scripts/setup_database.py
 ```
 
-## 📚 Documentación Adicional
+### Tests de Scraping
 
-Consulta la carpeta `docs/` para documentación detallada:
+```bash
+# Test FUTBIN scraper
+python scripts/test_futbin.py
 
-- **GUIA_USO.md** - Guía completa de uso
-- **DISCORD_SETUP.txt** - Configuración paso a paso de Discord
-- **ESTRATEGIAS_11K.md** - Estrategias de trading con 11K coins
-- **MODERN_UI_README.md** - Detalles de la interfaz moderna
-- **IMPLEMENTACION_FEATURES.md** - Features implementadas
+# Test SBC scraper
+python scripts/test_sbc_scraper.py
+
+# Test sistema de extintos
+python scripts/test_extinct_system.py
+```
+
+## 📚 Documentación Avanzada
+
+### Guías Completas
+- **docs/ML_ENHANCEMENTS.md** - Sistema ML detallado
+- **docs/DATOS_REALES_CONFIRMACION.md** - Verificación datos reales
+- **docs/ESTRATEGIAS_11K.md** - Trading con bajo presupuesto
+- **docs/GUIA_USO.md** - Guía paso a paso
+
+### Configuración
+```yaml
+# config.yaml (ejemplo)
+prediction:
+  model_type: enhanced          # 'simple', 'prophet', 'enhanced'
+  enable_sbc_features: true
+  enable_event_features: true
+  anomaly_threshold: 2.5
+  training_window_days: 30
+
+market_analysis:
+  price_check_interval: 5       # minutos
+  min_rating: 82
+  top_players_count: 100
+```
+
+## 🚀 Roadmap / Mejoras Futuras
+
+### En Desarrollo
+- [ ] Alertas de precio en tiempo real
+- [ ] Notificaciones push (Windows)
+- [ ] Dashboard web (Flask)
+- [ ] Exportar reportes PDF/Excel
+
+### Planificado
+- [ ] Deep Learning con LSTM
+- [ ] Auto-trading (simulado)
+- [ ] Análisis de química de equipos
+- [ ] Integración con FUT Companion App (API no oficial)
+
+### Ideas
+- [ ] Comparación de precios PS/Xbox/PC
+- [ ] Tracking de meta players
+- [ ] Análisis de popularidad de cartas
+- [ ] Sistema de recomendaciones personalizadas
 
 ## 🤝 Contribuir
 
-Pull requests son bienvenidos. Para cambios mayores, abre un issue primero para discutir los cambios propuestos.
+Las contribuciones son bienvenidas! Para cambios importantes:
+
+1. Fork el proyecto
+2. Crea tu rama (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+### Áreas de Mejora
+- Optimización de scraping
+- Nuevos modelos ML
+- Mejor UI/UX
+- Tests unitarios
+- Documentación
+
+## ⚠️ Disclaimer Legal
+
+**Este proyecto es solo para fines educativos.**
+
+- ❌ NO es un bot automatizado de trading
+- ❌ NO interactúa directamente con EA servers
+- ✅ Solo proporciona análisis y recomendaciones
+- ✅ Requiere intervención manual del usuario
+
+El uso de bots automatizados puede violar los términos de servicio de EA Sports.
+**Usa bajo tu propio riesgo.**
 
 ## 📄 Licencia
 
-Este proyecto es de código abierto para fines educativos.
-
-## ⚠️ Disclaimer
-
-Este bot es solo para fines educativos. El uso de bots puede violar los términos de servicio de EA Sports. Usa bajo tu propio riesgo.
+MIT License - Ver [LICENSE](LICENSE) para más detalles.
 
 ## 👤 Autor
 
-**Suppra**
+**xSuppra**
 - GitHub: [@Suppra](https://github.com/Suppra)
 - Email: cristianfwc@gmail.com
+- Proyecto: [fifa-trading-assistant](https://github.com/Suppra/fifa-trading-assistant)
+
+## 🙏 Agradecimientos
+
+- **FUTBIN** - Por proporcionar datos públicos de precios
+- **EA Sports** - Por crear EA FC 26
+- **Comunidad Python** - Por las excelentes librerías
+
+## ⭐ Apoya el Proyecto
+
+Si este proyecto te ha ayudado:
+
+1. ⭐ Dale una estrella en GitHub
+2. 🍴 Fork el proyecto
+3. 📢 Comparte con otros traders
+4. 💡 Sugiere mejoras en Issues
 
 ---
 
-⭐ Si te gusta este proyecto, dale una estrella en GitHub!
+**Última actualización**: Noviembre 2025 • **Versión**: 2.0 Enhanced ML
+
+Desarrollado con ❤️ por **xSuppra**

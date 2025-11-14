@@ -40,6 +40,7 @@ class PriceHistory(Base):
     timestamp = Column(DateTime, default=datetime.now, nullable=False)
     supply = Column(Integer)  # Number of cards on market
     demand = Column(Integer)  # Sales velocity
+    hour_of_day = Column(Integer)  # Hour when price was recorded (0-23) for peak analysis
 
 class Transaction(Base):
     """Transaction model"""

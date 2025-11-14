@@ -364,6 +364,7 @@ class TradingBotApp:
             ('bidding', '🎯 Pujas Masivas', self._show_bidding_page),
             ('sbcs', '⚽ SBCs', self._show_sbcs_page),
             ('market', '📈 Mercado', self._show_market_page),
+            ('live_prices', '⚡ Live Prices', self._show_live_prices_page),
             ('history', '📊 Historial', self._show_history_page),
             ('discord', '💬 Discord', self._show_discord_page),
             ('settings', '⚙️ Ajustes', self._show_settings_page)
@@ -416,6 +417,11 @@ class TradingBotApp:
         market_frame = tk.Frame(self.content_container, bg=self.colors['bg_dark'])
         self.pages['market'] = market_frame
         self._create_market_tab(market_frame)
+        
+        # Live Prices page
+        live_prices_frame = tk.Frame(self.content_container, bg=self.colors['bg_dark'])
+        self.pages['live_prices'] = live_prices_frame
+        self._create_live_prices_tab(live_prices_frame)
         
         # History page
         history_frame = tk.Frame(self.content_container, bg=self.colors['bg_dark'])
@@ -523,6 +529,10 @@ class TradingBotApp:
     def _show_market_page(self):
         """Show market page"""
         pass  # Already loaded
+    
+    def _show_live_prices_page(self):
+        """Show live prices page"""
+        self._refresh_live_prices()
     
     def _show_history_page(self):
         """Show history page"""
@@ -1765,6 +1775,322 @@ Características:
         tk.Label(about_info, text=about_text, font=self.fonts['small'],
                 bg=self.colors['bg_input'], fg=self.colors['text_light'],
                 justify=tk.LEFT).pack(padx=15, pady=10, anchor=tk.W)
+    
+    def _create_live_prices_tab(self, parent):
+        """Create live prices tab with real-time feed"""
+        # Tab container
+        tab_container = tk.Frame(parent, bg=self.colors['bg_dark'])
+        tab_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Header section
+        header = tk.Frame(tab_container, bg=self.colors['bg_dark'])
+        header.pack(fill=tk.X, pady=(0, 20))
+        
+        # Stats cards row
+        stats_row = tk.Frame(header, bg=self.colors['bg_dark'])
+        stats_row.pack(fill=tk.X)
+        
+        # Polling status card
+        status_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        status_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(status_card, text="Estado del Feed", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(15, 5))
+        
+        self.feed_status_label = tk.Label(status_card, text="⚪ DETENIDO", font=self.fonts['header'],
+                                          bg=self.colors['bg_medium'], fg=self.colors['text_gray'])
+        self.feed_status_label.pack(padx=15, pady=(0, 15))
+        
+        # Watchlist size card
+        watchlist_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        watchlist_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(watchlist_card, text="Jugadores Monitoreados", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(15, 5))
+        
+        self.watchlist_size_label = tk.Label(watchlist_card, text="0", font=self.fonts['header'],
+                                             bg=self.colors['bg_medium'], fg=self.colors['accent_blue'])
+        self.watchlist_size_label.pack(padx=15, pady=(0, 15))
+        
+        # Updates detected card
+        updates_card = tk.Frame(stats_row, bg=self.colors['bg_medium'], relief=tk.FLAT)
+        updates_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        tk.Label(updates_card, text="Cambios Detectados", font=self.fonts['small'],
+                bg=self.colors['bg_medium'], fg=self.colors['text_gray']).pack(padx=15, pady=(15, 5))
+        
+        self.updates_count_label = tk.Label(updates_card, text="0", font=self.fonts['header'],
+                                            bg=self.colors['bg_medium'], fg=self.colors['accent_green'])
+        self.updates_count_label.pack(padx=15, pady=(0, 15))
+        
+        # Control buttons
+        controls_frame = tk.Frame(tab_container, bg=self.colors['bg_dark'])
+        controls_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Start/Stop button
+        self.feed_toggle_btn = tk.Button(controls_frame, text="▶️ INICIAR FEED",
+                                         command=self._toggle_price_feed,
+                                         bg=self.colors['accent_green'], fg='white',
+                                         font=self.fonts['subheader'],
+                                         relief=tk.FLAT, cursor='hand2',
+                                         padx=25, pady=12)
+        self.feed_toggle_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Auto-populate from inventory button
+        tk.Button(controls_frame, text="📦 Cargar desde Inventario",
+                 command=self._load_watchlist_from_inventory,
+                 bg=self.colors['accent_blue'], fg='white',
+                 font=self.fonts['body'],
+                 relief=tk.FLAT, cursor='hand2',
+                 padx=20, pady=10).pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Clear watchlist button
+        tk.Button(controls_frame, text="🗑️ Limpiar Watchlist",
+                 command=self._clear_watchlist,
+                 bg=self.colors['accent_red'], fg='white',
+                 font=self.fonts['body'],
+                 relief=tk.FLAT, cursor='hand2',
+                 padx=20, pady=10).pack(side=tk.LEFT)
+        
+        # Content area: 2 columns
+        content = tk.Frame(tab_container, bg=self.colors['bg_dark'])
+        content.pack(fill=tk.BOTH, expand=True)
+        
+        # Left column: Recent changes (60%)
+        left_col = tk.Frame(content, bg=self.colors['bg_dark'])
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(left_col, text="⚡ Cambios en Tiempo Real", font=self.fonts['subheader'],
+                bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(pady=(0, 10))
+        
+        # Scrollable frame for changes
+        changes_canvas = tk.Canvas(left_col, bg=self.colors['bg_medium'], highlightthickness=0)
+        changes_scroll = tk.Scrollbar(left_col, orient=tk.VERTICAL, command=changes_canvas.yview)
+        self.changes_frame = tk.Frame(changes_canvas, bg=self.colors['bg_medium'])
+        
+        self.changes_frame.bind('<Configure>', 
+                               lambda e: changes_canvas.configure(scrollregion=changes_canvas.bbox('all')))
+        
+        changes_canvas.create_window((0, 0), window=self.changes_frame, anchor='nw')
+        changes_canvas.configure(yscrollcommand=changes_scroll.set)
+        
+        changes_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        changes_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Right column: Watchlist (40%)
+        right_col = tk.Frame(content, bg=self.colors['bg_dark'])
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        tk.Label(right_col, text="👁️ Watchlist", font=self.fonts['subheader'],
+                bg=self.colors['bg_dark'], fg=self.colors['text_white']).pack(pady=(0, 10))
+        
+        # Scrollable frame for watchlist
+        watchlist_canvas = tk.Canvas(right_col, bg=self.colors['bg_medium'], highlightthickness=0)
+        watchlist_scroll = tk.Scrollbar(right_col, orient=tk.VERTICAL, command=watchlist_canvas.yview)
+        self.watchlist_frame = tk.Frame(watchlist_canvas, bg=self.colors['bg_medium'])
+        
+        self.watchlist_frame.bind('<Configure>',
+                                 lambda e: watchlist_canvas.configure(scrollregion=watchlist_canvas.bbox('all')))
+        
+        watchlist_canvas.create_window((0, 0), window=self.watchlist_frame, anchor='nw')
+        watchlist_canvas.configure(yscrollcommand=watchlist_scroll.set)
+        
+        watchlist_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        watchlist_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Initialize real-time feed service
+        self.price_feed = None
+        self._initialize_price_feed()
+    
+    def _initialize_price_feed(self):
+        """Initialize real-time price feed service"""
+        try:
+            from app.services.realtime_feed_service import RealTimePriceFeed
+            from app.services.futbin_service import FUTBINScraper
+            
+            if not hasattr(self, 'futbin_scraper'):
+                self.futbin_scraper = FUTBINScraper()
+            
+            self.price_feed = RealTimePriceFeed(self.db_manager, self.futbin_scraper)
+            
+            # Register callback for price changes
+            self.price_feed.register_callback(self._on_price_change)
+            
+            logger.info("✅ Real-Time Price Feed inicializado")
+            
+        except Exception as e:
+            logger.error(f"Error inicializando price feed: {e}")
+            self.price_feed = None
+    
+    def _toggle_price_feed(self):
+        """Toggle price feed on/off"""
+        if not self.price_feed:
+            messagebox.showwarning("Error", "Price feed no disponible")
+            return
+        
+        if self.price_feed.is_running:
+            # Stop feed
+            self.price_feed.stop_polling()
+            self.feed_toggle_btn.config(text="▶️ INICIAR FEED", bg=self.colors['accent_green'])
+            self.feed_status_label.config(text="⚪ DETENIDO", fg=self.colors['text_gray'])
+            self._add_activity_log("⏸️ Feed de precios detenido")
+        else:
+            # Start feed
+            if len(self.price_feed.watchlist) == 0:
+                messagebox.showwarning("Watchlist Vacía", 
+                                      "Añade jugadores a la watchlist primero.\n\nUsa 'Cargar desde Inventario' o añade manualmente.")
+                return
+            
+            self.price_feed.start_polling()
+            self.feed_toggle_btn.config(text="⏸️ DETENER FEED", bg=self.colors['accent_red'])
+            self.feed_status_label.config(text="🟢 ACTIVO", fg=self.colors['accent_green'])
+            self._add_activity_log(f"▶️ Feed iniciado ({len(self.price_feed.watchlist)} jugadores)")
+    
+    def _load_watchlist_from_inventory(self):
+        """Load watchlist from inventory"""
+        if not self.price_feed:
+            return
+        
+        self.price_feed.auto_populate_watchlist_from_inventory()
+        self._refresh_live_prices()
+        
+        count = len(self.price_feed.watchlist)
+        self._add_activity_log(f"📦 Watchlist cargada desde inventario: {count} jugadores")
+        messagebox.showinfo("Éxito", f"Watchlist cargada con {count} jugadores del inventario")
+    
+    def _clear_watchlist(self):
+        """Clear watchlist"""
+        if not self.price_feed:
+            return
+        
+        if messagebox.askyesno("Confirmar", "¿Limpiar toda la watchlist?"):
+            self.price_feed.clear_watchlist()
+            self._refresh_live_prices()
+            self._add_activity_log("🗑️ Watchlist limpiada")
+    
+    def _on_price_change(self, change: Dict[str, Any]):
+        """Callback cuando hay cambio de precio"""
+        # Add to changes feed
+        self._add_price_change_card(change)
+        
+        # Update stats
+        if self.price_feed:
+            stats = self.price_feed.get_stats()
+            self.updates_count_label.config(text=str(stats['updates']))
+        
+        # Add to activity log
+        direction_emoji = "📈" if change['change'] > 0 else "📉"
+        self._add_activity_log(
+            f"{direction_emoji} {change['player_name']}: "
+            f"{change['old_price']:,} → {change['new_price']:,} ({change['change_pct']:+.1f}%)"
+        )
+    
+    def _add_price_change_card(self, change: Dict[str, Any]):
+        """Add price change card to feed"""
+        try:
+            # Create card
+            card = tk.Frame(self.changes_frame, bg=self.colors['bg_light'], relief=tk.FLAT)
+            card.pack(fill=tk.X, pady=5, padx=10)
+            
+            # Header row: Name and timestamp
+            header = tk.Frame(card, bg=self.colors['bg_light'])
+            header.pack(fill=tk.X, padx=15, pady=(12, 5))
+            
+            tk.Label(header, text=change['player_name'], font=self.fonts['subheader'],
+                    bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(side=tk.LEFT)
+            
+            timestamp = datetime.fromisoformat(change['timestamp'])
+            time_str = timestamp.strftime('%H:%M:%S')
+            tk.Label(header, text=time_str, font=self.fonts['small'],
+                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(side=tk.RIGHT)
+            
+            # Price row
+            price_row = tk.Frame(card, bg=self.colors['bg_light'])
+            price_row.pack(fill=tk.X, padx=15, pady=(0, 12))
+            
+            # Old price
+            tk.Label(price_row, text=f"{change['old_price']:,}", font=self.fonts['body'],
+                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(side=tk.LEFT)
+            
+            # Arrow
+            arrow = "→" if change['change'] >= 0 else "→"
+            tk.Label(price_row, text=f" {arrow} ", font=self.fonts['body'],
+                    bg=self.colors['bg_light'], fg=self.colors['text_gray']).pack(side=tk.LEFT)
+            
+            # New price
+            price_color = self.colors['accent_green'] if change['change'] > 0 else self.colors['accent_red']
+            tk.Label(price_row, text=f"{change['new_price']:,}", font=self.fonts['subheader'],
+                    bg=self.colors['bg_light'], fg=price_color).pack(side=tk.LEFT)
+            
+            # Change percentage
+            change_text = f"{change['change_pct']:+.2f}%"
+            tk.Label(price_row, text=change_text, font=self.fonts['body'],
+                    bg=self.colors['bg_light'], fg=price_color).pack(side=tk.LEFT, padx=(10, 0))
+            
+            # Keep only last 20 changes
+            children = self.changes_frame.winfo_children()
+            if len(children) > 20:
+                children[0].destroy()
+            
+        except Exception as e:
+            logger.error(f"Error añadiendo card de cambio: {e}")
+    
+    def _refresh_live_prices(self):
+        """Refresh live prices display"""
+        if not self.price_feed:
+            return
+        
+        try:
+            # Update stats
+            stats = self.price_feed.get_stats()
+            self.watchlist_size_label.config(text=str(stats['watchlist_size']))
+            self.updates_count_label.config(text=str(stats['updates']))
+            
+            # Update status
+            if stats['is_running']:
+                self.feed_status_label.config(text="🟢 ACTIVO", fg=self.colors['accent_green'])
+                self.feed_toggle_btn.config(text="⏸️ DETENER FEED", bg=self.colors['accent_red'])
+            else:
+                self.feed_status_label.config(text="⚪ DETENIDO", fg=self.colors['text_gray'])
+                self.feed_toggle_btn.config(text="▶️ INICIAR FEED", bg=self.colors['accent_green'])
+            
+            # Refresh watchlist display
+            for widget in self.watchlist_frame.winfo_children():
+                widget.destroy()
+            
+            if len(self.price_feed.watchlist) == 0:
+                tk.Label(self.watchlist_frame, text="Watchlist vacía\n\nUsa 'Cargar desde Inventario'",
+                        font=self.fonts['body'], bg=self.colors['bg_medium'],
+                        fg=self.colors['text_gray']).pack(pady=50)
+            else:
+                session = self.db_manager.get_session()
+                
+                for player_id in self.price_feed.watchlist:
+                    player = session.query(self.db_manager.Player).filter_by(
+                        player_id=player_id
+                    ).first()
+                    
+                    if player:
+                        # Create watchlist item
+                        item = tk.Frame(self.watchlist_frame, bg=self.colors['bg_light'], relief=tk.FLAT)
+                        item.pack(fill=tk.X, pady=3, padx=10)
+                        
+                        # Player name and rating
+                        info_frame = tk.Frame(item, bg=self.colors['bg_light'])
+                        info_frame.pack(fill=tk.X, padx=15, pady=10)
+                        
+                        tk.Label(info_frame, text=player.name, font=self.fonts['body'],
+                                bg=self.colors['bg_light'], fg=self.colors['text_white']).pack(side=tk.LEFT)
+                        
+                        rating_badge = tk.Label(info_frame, text=str(player.rating),
+                                               bg=self.colors['accent_gold'], fg='black',
+                                               font=self.fonts['small'], padx=8, py=3)
+                        rating_badge.pack(side=tk.RIGHT)
+                
+                session.close()
+        
+        except Exception as e:
+            logger.error(f"Error refreshing live prices: {e}")
     
     def _load_theme_preference(self):
         """Load theme preference from config file"""
